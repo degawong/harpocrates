@@ -165,7 +165,8 @@ namespace harpocrates {
 			return *this;
 		}
 	public:
-		auto read_image(std::string image_path) {
+		template<typename _type>
+		auto read_image(_type image_path) {
 			image image_reader;
 			auto format = image_format::image_format_gray;
 			auto info = image_reader.read_image(image_path);
@@ -176,7 +177,8 @@ namespace harpocrates {
 			*this = MatData<_data_type, _align_size>(std::get<0>(info), std::get<1>(info), int(format));
 			__copy_from_image(std::get<0>(info), std::get<1>(info), std::get<2>(info), std::get<3>(info));
 		}
-		auto write_image(std::string image_path) {
+		template<typename _type>
+		auto write_image(_type image_path) {
 			auto channel = 1;
 			image image_writer;
 			auto res = return_code::success;
@@ -235,15 +237,23 @@ namespace harpocrates {
 				if (return_code::success != res) {
 					return res;
 				}
-				data = new unsigned char[width * channel * height];
+				data = __new_data(width * channel * height);
 				(nullptr != data) | [&]() {
 					for (int i = 0; i < height; ++i) {
 						std::copy_n(&data_with_pitch[i * pitch], width * channel, &data[i * width * channel]);
 					}
 					stbi_write_bmp(image_path.c_str(), width, height, channel, data);
 				};
-				delete[] data;
+				__delete_data();
 				return res;
+			}
+		private:
+			auto __new_data(int size) {
+				return new unsigned char[size];
+			}
+			auto __delete_data() {
+				delete[] data;
+				data = nullptr;
 			}
 		private:
 			auto __dellocate() {
@@ -299,68 +309,41 @@ namespace harpocrates {
 			}
 		public:
 			auto operator++ () {
-				//int step = 3;
-				//auto res = return_code::success;
-				//if (1 != __parse_format_code<image_info::plane_number>()) {
-				//	res = return_code::unsupport;
-				//}
-				//if (return_code::success != res) {
-				//	return res;
-				//}
-				//(65792 == __code_format) | [&]() {
-				//	step = 1;
-				//};
 				__data += 1;
 				return *this;
 			}
 			auto operator++ (int) {
-				//int step = 3;
 				auto value = *__data;
-				//auto res = return_code::success;
-				//if (1 != __parse_format_code<image_info::plane_number>()) {
-				//	res = return_code::unsupport;
-				//}
-				//if (return_code::success != res) {
-				//	return res;
-				//}
-				//(65792 == __code_format) | [&]() {
-				//	step = 1;
-				//};
 				__data += 1;
 				return value;
 			}
 			auto operator+ (int step) {
-				//int step = 3;
-				//auto res = return_code::success;
-				//if (1 != __parse_format_code<image_info::plane_number>()) {
-				//	res = return_code::unsupport;
-				//}
-				//if (return_code::success != res) {
-				//	return res;
-				//}
-				//(65792 == __code_format) | [&]() {
-				//	step = 1;
-				//};
-				__data += step;
+				int multi = 3;
+				(65792 == __code_format) | [&]() {
+					multi = 1;
+				};
+				__data += multi * step;
 				return *this;
 			}
 			auto operator- (int step) {
-				//int step = 3;
-				//auto res = return_code::success;
-				//if (1 != __parse_format_code<image_info::plane_number>()) {
-				//	res = return_code::unsupport;
-				//}
-				//if (return_code::success != res) {
-				//	return res;
-				//}
-				//(65792 == __code_format) | [&]() {
-				//	step = 1;
-				//};
-				__data -= step;
+				int multi = 3;
+				(65792 == __code_format) | [&]() {
+					multi = 1;
+				};
+				__data -= multi * step;
 				return *this;
+			}
+			auto operator- (const iterator& iter) {
+				return (__data - iter.__data) / sizeof(_data_type);
 			}
 			auto operator* () {
 				return __data;
+			}
+			auto operator> (const iterator& iter) {
+				return __data > iter.__data;
+			}
+			auto operator< (const iterator& iter) {
+				return __data < iter.__data;
 			}
 			auto operator== (const iterator& iter) {
 				return __data == iter.__data;

@@ -101,12 +101,12 @@ namespace harpocrates {
 		std::initializer_list<int>{ ((function(std::forward<_args>(args))), 0)...};
 	};
 
-	template<typename  _function, typename _size_type, typename... _args, size_t _hint = 8>
-	return_code parallel_execution(_size_type begin, _size_type end, _function&& function, _args&&... args) {
+	template<typename  _function, typename _iter_type, typename... _args, size_t _hint = 8>
+	return_code parallel_execution(_iter_type begin, _iter_type end, _function&& function, _args&&... args) {
 		assert(end > begin);
 		auto tp = ThreadPool::get_instance();
 		//typedef typename std::invoke_result<_function(int, int, _args...)>::type return_type;
-		typedef typename std::result_of<_function(_size_type, _size_type, _args...)>::type return_type;
+		typedef typename std::result_of<_function(_iter_type, _iter_type, _args...)>::type return_type;
 		std::vector<std::future<return_type>> thread_result;
 		auto thread_count = min(std::thread::hardware_concurrency(), max(1, _hint));
 		auto stride = ((end - begin) / thread_count);

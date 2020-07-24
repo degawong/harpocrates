@@ -1,3 +1,11 @@
+/*
+ * @autor: degawong
+ * @date: Do not edit
+ * @lastEditors: degawong
+ * @lastEditTime: Do not edit
+ * @description: Do not edi
+ * @filePath: Do not edit
+ */ 
 
 #include <vector>
 #include <string>
@@ -18,12 +26,15 @@ using namespace harpocrates;
 using namespace operator_reload;
 
 std::string path{ "non exist directory" };
+std::string image_path{ "f:/image/lena.bmp" };
+
+//#include <vld.h>
 
 int main() {
 
 	Mat image;
-	image.read_image("f:/image/lena.bmp");
-	//image.write_image("");
+	image.read_image(image_path);
+	image.write_image(image_path);
 
 	std::for_each(
 		//std::execution::par,
@@ -46,25 +57,32 @@ int main() {
 	std::for_each(
 		image_list.begin(),
 		image_list.end(),
-		[&](auto name) {
-		    std::cout << name.c_str() << std::endl;
+		[&](auto iter) {
+		    std::cout << iter << std::endl;
 	    }
 	);
 
-	auto parallel_1 = [&](auto ref) {
-		return 0;
+	auto parallel_1 = [](auto iter) {
+		 **iter = 20;
+		 return 0;
 	};
 
-	parallel_for_each(0, 100, parallel_1);
+	parallel_for_each(image.begin(), image.end(), parallel_1);
 
 	auto parallel_2 = [&](auto begin, auto end, auto info) {
-		return 0;
+		std::for_each(
+			image.begin(),
+			image.end(),
+			[](auto iter) {
+			    *iter = 128;
+		    }
+		);
 	};
 
-	parallel_execution(0, 100, parallel_2, std::string("harpocrates..."));
+	parallel_execution(image.begin(), image.end(), parallel_2, std::string("harpocrates..."));
 
-	std::string("operator | reload") | [=](auto number) {
-		std::cout << number << std::endl;
+	std::string("operator | reload") | [=](auto iter) {
+		std::cout << iter << std::endl;
 	};
 
 	return 0;
