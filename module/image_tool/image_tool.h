@@ -33,6 +33,73 @@
 namespace harpocrates {
 
 	using namespace image;
+	using namespace operator_reload;
+
+	class iterator {
+		using _data_type = unsigned char;
+	public:
+		//using difference_type = typename _Myvec::difference_type;
+		using pointer = _data_type * ;
+		using reference = _data_type & ;
+		using value_type = _data_type;
+		using iterator_category = std::random_access_iterator_tag;
+	public:
+		iterator() : __data(nullptr) {
+		};
+		~iterator() = default;
+	public:
+		iterator(int format, pointer data) {
+			__data = data;
+			__format = format;
+		}
+	public:
+		auto operator++ () {
+			__data += 1;
+			return *this;
+		}
+		auto operator++ (int) {
+			auto value = *__data;
+			__data += 1;
+			return value;
+		}
+		auto operator+ (int step) {
+			int multi = 3;
+			(65792 == __format) | [&]() {
+				multi = 1;
+			};
+			__data += multi * step;
+			return *this;
+		}
+		auto operator- (int step) {
+			int multi = 3;
+			(65792 == __format) | [&]() {
+				multi = 1;
+			};
+			__data -= multi * step;
+			return *this;
+		}
+		auto operator- (const iterator& iter) {
+			return (__data - iter.__data) / sizeof(value_type);
+		}
+		auto operator* () {
+			return __data;
+		}
+		auto operator> (const iterator& iter) {
+			return __data > iter.__data;
+		}
+		auto operator< (const iterator& iter) {
+			return __data < iter.__data;
+		}
+		auto operator== (const iterator& iter) {
+			return __data == iter.__data;
+		}
+		auto operator!= (const iterator& iter) {
+			return __data != iter.__data;
+		}
+	private:
+		int __format;
+		pointer __data;
+	};
 
 	template<class _derived>
 	class ReferCount {
@@ -291,70 +358,6 @@ namespace harpocrates {
 		auto end() {
 			return iterator(__code_format, &__data[0][__height * __pitch[0]]);
 		}
-		class iterator {
-		public:
-			//using difference_type = typename _Myvec::difference_type;
-			using pointer = _data_type*;
-			using reference = _data_type&;
-			using value_type = _data_type;
-			using iterator_category = std::random_access_iterator_tag;
-		public:
-			iterator() : __data(nullptr) {
-			};
-			~iterator() = default;
-		public:
-			iterator(int code_format, _data_type* data) {
-				__data = data;
-				__code_format = code_format;
-			}
-		public:
-			auto operator++ () {
-				__data += 1;
-				return *this;
-			}
-			auto operator++ (int) {
-				auto value = *__data;
-				__data += 1;
-				return value;
-			}
-			auto operator+ (int step) {
-				int multi = 3;
-				(65792 == __code_format) | [&]() {
-					multi = 1;
-				};
-				__data += multi * step;
-				return *this;
-			}
-			auto operator- (int step) {
-				int multi = 3;
-				(65792 == __code_format) | [&]() {
-					multi = 1;
-				};
-				__data -= multi * step;
-				return *this;
-			}
-			auto operator- (const iterator& iter) {
-				return (__data - iter.__data) / sizeof(_data_type);
-			}
-			auto operator* () {
-				return __data;
-			}
-			auto operator> (const iterator& iter) {
-				return __data > iter.__data;
-			}
-			auto operator< (const iterator& iter) {
-				return __data < iter.__data;
-			}
-			auto operator== (const iterator& iter) {
-				return __data == iter.__data;
-			}
-			auto operator!= (const iterator& iter) {
-				return __data != iter.__data;
-			}
-		private:
-			int __code_format;
-			_data_type* __data;
-		};
 	public:
 		_data_type* operator[] (int index) {
 			return __data[index];
