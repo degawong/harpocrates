@@ -64,9 +64,9 @@ int main() {
 
 	auto parallel_1 = [](auto iter) {
 		 **iter = 20;
-		 return 0;
+		 //std::cout << std::this_thread::get_id() << std::endl;
 	};
-
+	
 	parallel_for_each(image.begin(), image.end(), parallel_1);
 
 	auto parallel_2 = [&](auto begin, auto end, auto info) {

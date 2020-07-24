@@ -132,6 +132,10 @@ namespace harpocrates {
 		return return_code::success;
 	};
 
+	// note
+	// it is very not applicable for light caculation operation
+	// usage
+	// u can put heavy caculation into such as a vector or some other container
 	template<typename _iter_type, typename  _function>
 	return_code parallel_for_each(_iter_type begin, _iter_type end, _function function) {
 		auto tp = ThreadPool::get_instance();
