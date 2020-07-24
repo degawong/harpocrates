@@ -26,6 +26,8 @@
 
 namespace harpocrates {
 
+	using namespace operator_reload;
+
 	class PathWalker : public SingletonPattern<PathWalker> {
 	public:
 		~PathWalker() {

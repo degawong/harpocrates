@@ -13,11 +13,11 @@ namespace harpocrates {
 
 	using handle = void *;
 
-	class engine_package final : public SingletonPattern<engine_package> {
+	class EnginePackage final : public SingletonPattern<EnginePackage> {
 	public:
-		~engine_package() = default;
+		~EnginePackage() = default;
 	private:
-		engine_package(
+		EnginePackage(
 			handle opencl = nullptr,
 			handle resize = nullptr,
 			handle memory = nullptr,
@@ -46,7 +46,7 @@ namespace harpocrates {
 		handle __memory;
 		handle __parallel;
 	private:
-		friend SingletonPattern<engine_package>;
+		friend SingletonPattern<EnginePackage>;
 	};
 
 	namespace algorithm {

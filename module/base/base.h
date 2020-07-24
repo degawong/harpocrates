@@ -2,8 +2,8 @@
  * @Description: 
  * @Autor: degawong
  * @Date: 2020-04-15 17:24:12
- * @LastEditors: degawong
- * @LastEditTime: 2020-05-12 15:05:06
+ * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2020-07-23 18:55:55
  */
 #pragma once
 
@@ -30,18 +30,6 @@ namespace harpocrates {
 		not_match,
 		not_directory,
 		out_of_memory,
-	};
-
-	enum class interp_method {
-		linear = 0,
-		bilinear = 1,
-		bicubic = 2,
-	};
-
-	enum class image_info {
-		plane_number = 1,
-		format_number = 2,
-		element_number = 3,
 	};
 
 	enum class algorithm_code {
@@ -114,13 +102,6 @@ namespace harpocrates {
 		return ((args != input) && ...);
 	};
 
-	template<typename _function>
-	auto operator| (bool condition, _function&& function) {
-		if (true == condition) {
-			return std::forward<_function>(function)();
-		}
-	};
-
 	class Noncopyable {
 	protected:
 		Noncopyable() = default;
@@ -130,11 +111,46 @@ namespace harpocrates {
 		const Noncopyable& operator=(const Noncopyable&) = delete;
 	};
 
+	namespace image {
+		enum class interp_method {
+			linear = 0,
+			bilinear = 1,
+			bicubic = 2,
+		};
+
+		enum class image_info {
+			plane_number = 3,
+			format_number = 1,
+			element_number = 2,
+		};
+
+		template<int _arg_1, int _arg_2, int _arg_3>
+		struct format_code {
+			enum { value = (((_arg_1 << 8) + _arg_2) << 8) + _arg_3 };
+		};
+
+		enum class image_format {
+			image_format_bgr = format_code<1, 3, 0>::value,
+			image_format_rgb = format_code<1, 3, 1>::value,
+			image_format_yuv = format_code<1, 3, 2>::value,
+			image_format_gray = format_code<1, 1, 0>::value,
+			image_format_nv12 = format_code<2, 1, 0>::value,
+			image_format_nv21 = format_code<2, 1, 1>::value,
+		};
+	};
+
 	namespace operator_reload {
 		//auto operator<<(std::ostream &, const std::string &) {
 		//	return 0;
 		//}
 
+		template<typename _function>
+		auto operator| (bool condition, _function&& function) {
+			if (true == condition) {
+				return std::forward<_function>(function)();
+			}
+		};
+		
 		template<typename _args, typename _function>
 		auto operator| (_args&& args, _function&& function) {
 			return std::forward<_function>(function)(std::forward<_args>(args));

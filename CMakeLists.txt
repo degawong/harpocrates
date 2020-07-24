@@ -12,27 +12,19 @@ set(
 
 add_subdirectory(module)
 
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set_property(TARGET reflection PROPERTY FOLDER "module")
-set_property(TARGET path_walker PROPERTY FOLDER "module")
-set_property(TARGET time_clock PROPERTY FOLDER "module")
-set_property(TARGET thread_pool PROPERTY FOLDER "module")
-set_property(TARGET singleton_pattern PROPERTY FOLDER "module")
-
-list(
-	APPEND
-	CMAKE_MODULE_PATH
-	${CMAKE_CURRENT_SOURCE_DIR}/module/marco
-)
-
-include(
-	marco
+set_property(
+	GLOBAL	PROPERTY
+	USE_FOLDERS ON
 )
 
 file(
 	GLOB
 	SRCS
 	*.cpp
+)
+
+filter(
+	SRCS
 )
 
 add_executable(
