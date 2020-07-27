@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-04-30 10:39:53
- * @LastEditTime: 2020-06-05 13:31:35
+ * @LastEditTime: 2020-07-27 15:11:51
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \harpocrates\module\image_tool\image_tool.h
@@ -25,32 +25,42 @@
 #include <condition_variable>
 
 #include <base/base.h>
-#include <3rdparty/image/stb_image_aug.h>
 
-//#include <image/stb_image.h>
-//#include <image/stb_image_write.h>
+#include <image/stb_image.h>
+#include <image/stb_image_write.h>
 
 namespace harpocrates {
 
 	using namespace image;
 	using namespace operator_reload;
 
+	template<typename _type>
 	class iterator {
-		using _data_type = unsigned char;
 	public:
-		//using difference_type = typename _Myvec::difference_type;
-		using pointer = _data_type * ;
-		using reference = _data_type & ;
-		using value_type = _data_type;
-		using iterator_category = std::random_access_iterator_tag;
+		using pointer = typename _type::pointer;
+		using reference = typename _type::reference;
+		using value_type = typename _type::value_type;
+		using difference_type = typename _type::difference_type;
+		using iterator_category = typename _type::iterator_category;
 	public:
 		iterator() : __data(nullptr) {
 		};
-		~iterator() = default;
+		~iterator() {
+			__data = nullptr;
+		};
 	public:
-		iterator(int format, pointer data) {
+		iterator(int verbose, pointer data) {
 			__data = data;
-			__format = format;
+			__verbose = verbose;
+		}
+	public:
+		iterator(const iterator& iter) {
+			__data = iter.__data;
+			__verbose = iter.__verbose;
+		}
+		iterator(iterator&& iter) {
+			__data = iter.__data;
+			__verbose = iter.__verbose;
 		}
 	public:
 		auto operator++ () {
@@ -62,42 +72,62 @@ namespace harpocrates {
 			__data += 1;
 			return value;
 		}
-		auto operator+ (int step) {
+		template<typename _diff_type>
+		auto operator+ (_diff_type step) {
 			int multi = 3;
-			(65792 == __format) | [&]() {
+			(65792 == __verbose) | [&]() {
 				multi = 1;
 			};
-			__data += multi * step;
-			return *this;
+			return iterator<_type>(__verbose, __data + multi * step);
 		}
-		auto operator- (int step) {
+		template<typename _diff_type>
+		auto operator- (_diff_type step) {
 			int multi = 3;
-			(65792 == __format) | [&]() {
+			(65792 == __verbose) | [&]() {
 				multi = 1;
 			};
-			__data -= multi * step;
-			return *this;
+			return iterator<_type>(__verbose, __data - multi * step);
 		}
 		auto operator- (const iterator& iter) {
-			return (__data - iter.__data) / sizeof(value_type);
+			int multi = 3;
+			(65792 == __verbose) | [&]() {
+				multi = 1;
+			};
+			return (__data - iter.__data) / (multi * sizeof(value_type));
+		}
+		auto operator= (const iterator& iter) {
+			__data = iter.__data;
+			__verbose = iter.__verbose;
+			return *this;
+		}
+		auto operator= (iterator&& iter) {
+			__data = iter.__data;
+			__verbose = iter.__verbose;
+			return *this;
 		}
 		auto operator* () {
 			return __data;
 		}
-		auto operator> (const iterator& iter) {
+		auto operator> (const iterator& iter) const {
 			return __data > iter.__data;
 		}
-		auto operator< (const iterator& iter) {
+		auto operator< (const iterator& iter) const {
 			return __data < iter.__data;
 		}
-		auto operator== (const iterator& iter) {
+		auto operator== (const iterator& iter) const {
 			return __data == iter.__data;
 		}
-		auto operator!= (const iterator& iter) {
+		auto operator!= (const iterator& iter) const {
 			return __data != iter.__data;
 		}
+		auto operator>> (std::istream& iter) const {
+			return iter >> *__data;
+		}
+		auto operator<< (std::ostream& iter) const {
+			return iter << *__data;
+		}
 	private:
-		int __format;
+		int __verbose;
 		pointer __data;
 	};
 
@@ -116,7 +146,7 @@ namespace harpocrates {
 		auto _add_ref_count() {
 			(nullptr != __refer_count) | [this]() {
 				(*__refer_count)++;
-			}
+			};
 		}
 		auto _dec_ref_count() {
 			(__derived().__shareable) | [this]() {
@@ -152,6 +182,12 @@ namespace harpocrates {
 
 	template<typename _data_type = unsigned char, int _align_size = 64>
 	class MatData : public ReferCount<MatData<_data_type, _align_size>> {
+	public:
+		using pointer = _data_type *;
+		using value_type = _data_type;
+		using reference = _data_type &;
+		using difference_type = ptrdiff_t;
+		using iterator_category = std::random_access_iterator_tag;
 	public:
 		MatData(bool shareable = true) : __shareable(shareable) {
 			_shallow_clean();
@@ -353,10 +389,10 @@ namespace harpocrates {
 		}
 	public:
 		auto begin() {
-			return iterator(__code_format, __data[0]);
+			return iterator<MatData>(__code_format, __data[0]);
 		}
 		auto end() {
-			return iterator(__code_format, &__data[0][__height * __pitch[0]]);
+			return iterator<MatData>(__code_format, &__data[0][__height * __pitch[0]]);
 		}
 	public:
 		_data_type* operator[] (int index) {
@@ -509,7 +545,7 @@ namespace harpocrates {
 		alignas(_align_size) _data_type* __data[4];
 		static_assert((_align_size >= 16) && (_align_size % 16 == 0));
 	private:
-		friend iterator;
+		friend iterator<MatData>;
 		friend ReferCount<MatData>;
 	};
 
@@ -531,9 +567,9 @@ namespace harpocrates {
 			};
 		}
 		auto _dec_ref_count() {
-			((nullptr != __refer_count) | [this]() {
+			(nullptr != __refer_count) | [this]() {
 				(1 == ((*__refer_count)--)) | [this]() {
-					__uninit();)
+					__uninit();
 				};
 				__release();
 			};

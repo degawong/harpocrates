@@ -19,8 +19,6 @@
 #include <functional>
 #include <condition_variable>
 
-#include "assert.h"
-
 #include <base/base.h>
 #include <singleton_pattern/singleton_pattern.h>
 
@@ -55,10 +53,7 @@ namespace harpocrates {
         template <typename _function, typename... _args>
 		// std::result_of is deprecated in c++17 and removed in c++20
 		auto commit_task(_function&& function, _args&&... args) {
-		// auto commit_task(_function&& function, _args&&... args) -> std::future<typename std::result_of<_function(_args...)>::type> {
-		// auto commit_task(_function&& function, _args&&... args) -> std::future<typename std::invoke_result<_function(_args...)>::type> {
 			typedef typename std::result_of<_function(_args...)>::type return_type;
-			//typedef typename std::invoke_result<_function(_args...)>::type return_type;
 			auto t = std::make_shared<std::packaged_task<return_type()>>(std::bind(std::forward<_function>(function), std::forward<_args>(args)...));
 			auto ret = t->get_future();
 			{
@@ -103,9 +98,7 @@ namespace harpocrates {
 
 	template<typename  _function, typename _iter_type, typename... _args, size_t _hint = 8>
 	return_code parallel_execution(_iter_type begin, _iter_type end, _function&& function, _args&&... args) {
-		assert(end > begin);
 		auto tp = ThreadPool::get_instance();
-		//typedef typename std::invoke_result<_function(int, int, _args...)>::type return_type;
 		typedef typename std::result_of<_function(_iter_type, _iter_type, _args...)>::type return_type;
 		std::vector<std::future<return_type>> thread_result;
 		auto thread_count = min(std::thread::hardware_concurrency(), max(1, _hint));

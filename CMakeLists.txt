@@ -10,6 +10,12 @@ set(
 	"${CMAKE_CXX_FLAGS} -g"
 )
 
+add_definitions(
+	-DSTB_IMAGE_IMPLEMENTATION
+	-DSTB_IMAGE_WRITE_IMPLEMENTATION
+	-DSTB_IMAGE_RESIZE_IMPLEMENTATION
+)
+
 add_subdirectory(module)
 
 set_property(

@@ -146,7 +146,7 @@ namespace harpocrates {
 	private:
 		SingletonMeyers() = default;
 	private:
-		friend typename _derived;
+		//friend typename _derived;
 	};
 
 	template<typename _derived>
@@ -167,6 +167,6 @@ namespace harpocrates {
 	private:
 		SingletonAtomic() = default;
 	private:
-		friend typename _derived;
+		//friend typename _derived;
 	};
 }

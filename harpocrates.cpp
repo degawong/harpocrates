@@ -25,63 +25,59 @@
 using namespace harpocrates;
 using namespace operator_reload;
 
+//std::string path{ "f:/image/" };
 std::string path{ "non exist directory" };
-std::string image_path{ "f:/image/lena.bmp" };
 
 //#include <vld.h>
 
 int main() {
-
-	Mat image;
-	image.read_image(image_path);
-	image.write_image(image_path);
-
-	std::for_each(
-		//std::execution::par,
-		image.begin(),
-		image.end(),
-		[](auto iter) {
-		    *iter = 0;
-	    }
-	);
-
-	for (auto iter : image) {
-		*iter = 255;
-	}
 
 	std::cout << pi<float> << std::endl;
 	std::cout << radian<float> << std::endl;
 
 	auto path_walker = PathWalker::get_instance();
 	auto image_list = path_walker->walk_path(path, ".*\.(bmp|jpg)");
-	std::for_each(
-		image_list.begin(),
-		image_list.end(),
-		[&](auto iter) {
-		    std::cout << iter << std::endl;
-	    }
-	);
 
-	auto parallel_1 = [](auto iter) {
-		 **iter = 20;
-		 //std::cout << std::this_thread::get_id() << std::endl;
-	};
-	
-	parallel_for_each(image.begin(), image.end(), parallel_1);
+	for (auto ref : image_list) {
+		Mat image;
+		image.read_image(ref);
 
-	auto parallel_2 = [&](auto begin, auto end, auto info) {
 		std::for_each(
+			//std::execution::par,
 			image.begin(),
 			image.end(),
 			[](auto iter) {
-			    *iter = 128;
+			    *iter = 0;
 		    }
 		);
-	};
 
-	parallel_execution(image.begin(), image.end(), parallel_2, std::string("harpocrates..."));
+		for (auto iter : image) {
+			*iter = 50;
+		}
 
-	std::string("operator | reload") | [=](auto iter) {
+		auto parallel_1 = [](auto iter) {
+			**iter = 100;
+			//std::cout << std::this_thread::get_id() << std::endl;
+		};
+
+		parallel_for_each(image.begin(), image.end(), parallel_1);
+
+		auto parallel_2 = [&](auto begin, auto end, auto info) {
+			std::for_each(
+				begin,
+				end,
+				[](auto iter) {
+				    *iter = 150;
+			    }
+			);
+		};
+
+		parallel_execution(image.begin(), image.end(), parallel_2, std::string("harpocrates..."));
+
+		//image.write_image("f:/image/res.bmp");
+	}
+
+	std::string("operator | reload") | [&](auto iter) {
 		std::cout << iter << std::endl;
 	};
 
