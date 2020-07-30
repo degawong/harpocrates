@@ -102,14 +102,14 @@ namespace harpocrates {
 		typedef typename std::result_of<_function(_iter_type, _iter_type, _args...)>::type return_type;
 		std::vector<std::future<return_type>> thread_result;
 		auto thread_count = min(std::thread::hardware_concurrency(), max(1, _hint));
-		auto stride = ((end - begin) / thread_count);
+		auto chunk_size = ((end - begin) / thread_count)>> 1 << 1;
 		for (size_t i = 0; i < thread_count; ++i) {
 			thread_result.push_back(
 				std::move(
 					tp->commit_task(
 						function,
-						begin + i * stride,
-						((i == thread_count - 1) ? end : begin + (i + 1) * stride),
+						begin + i * chunk_size,
+						((i == thread_count - 1) ? end : begin + (i + 1) * chunk_size),
 						std::forward<_args>(args)...
 					)
 				)

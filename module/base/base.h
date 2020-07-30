@@ -11,16 +11,6 @@ namespace harpocrates {
 
 	using handle = void *;
 
-	template<typename _type>
-	constexpr _type pi { 
-		3.141592653589793 
-	};
-
-	template<typename _type>
-	constexpr _type radian { 
-		57.29577951307855
-	};
-
 	enum class return_code {
 		success,
 		io_error,
@@ -110,6 +100,10 @@ namespace harpocrates {
 		Noncopyable(const Noncopyable&) = delete;
 		const Noncopyable& operator=(const Noncopyable&) = delete;
 	};
+
+	namespace type {
+		using uchar = unsigned char;
+	}
 
 	namespace image {
 		enum class interp_method {

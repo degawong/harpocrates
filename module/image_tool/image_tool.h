@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <numeric>
 #include <iostream>
+#include <algorithm>
 #include <functional>
 #include <condition_variable>
 
@@ -29,13 +30,17 @@
 #include <image/stb_image.h>
 #include <image/stb_image_write.h>
 
+#include <thread_pool/thread_pool.h>
+
 namespace harpocrates {
 
+	using namespace type;
 	using namespace image;
 	using namespace operator_reload;
 
 	template<typename _type>
-	class iterator {
+	//class iterator {
+	class iterator : public std::iterator<std::random_access_iterator_tag, typename _type::value_type> {
 	public:
 		using pointer = typename _type::pointer;
 		using reference = typename _type::reference;
@@ -72,6 +77,15 @@ namespace harpocrates {
 			__data += 1;
 			return value;
 		}
+		auto operator-- () {
+			__data -= 1;
+			return *this;
+		}
+		auto operator-- (int) {
+			auto value = *__data;
+			__data -= 1;
+			return value;
+		}
 		template<typename _diff_type>
 		auto operator+ (_diff_type step) {
 			int multi = 3;
@@ -88,6 +102,13 @@ namespace harpocrates {
 			};
 			return iterator<_type>(__verbose, __data - multi * step);
 		}
+		auto operator+ (const iterator& iter) {
+			int multi = 3;
+			(65792 == __verbose) | [&]() {
+				multi = 1;
+			};
+			return (__data - iter.__data) / (multi * sizeof(value_type));
+		}
 		auto operator- (const iterator& iter) {
 			int multi = 3;
 			(65792 == __verbose) | [&]() {
@@ -95,12 +116,12 @@ namespace harpocrates {
 			};
 			return (__data - iter.__data) / (multi * sizeof(value_type));
 		}
-		auto operator= (const iterator& iter) {
+		auto operator= (iterator&& iter) {
 			__data = iter.__data;
 			__verbose = iter.__verbose;
 			return *this;
 		}
-		auto operator= (iterator&& iter) {
+		auto operator= (const iterator& iter) {
 			__data = iter.__data;
 			__verbose = iter.__verbose;
 			return *this;
@@ -113,6 +134,12 @@ namespace harpocrates {
 		}
 		auto operator< (const iterator& iter) const {
 			return __data < iter.__data;
+		}
+		auto operator>= (const iterator& iter) const {
+			return __data >= iter.__data;
+		}
+		auto operator<= (const iterator& iter) const {
+			return __data <= iter.__data;
 		}
 		auto operator== (const iterator& iter) const {
 			return __data == iter.__data;
@@ -129,6 +156,8 @@ namespace harpocrates {
 	private:
 		int __verbose;
 		pointer __data;
+	private:
+		friend _type;
 	};
 
 	template<class _derived>
@@ -267,35 +296,7 @@ namespace harpocrates {
 			}
 			return *this;
 		}
-	public:
-		template<typename _type>
-		auto read_image(_type image_path) {
-			image image_reader;
-			auto format = image_format::image_format_gray;
-			auto info = image_reader.read_image(image_path);
-			//[auto width,auto height,auto channel,auto data] = image_loader.load_image(image_path);
-			(3 == std::get<2>(info)) | [&]() {
-				format = image_format::image_format_rgb;
-			};
-			*this = MatData<_data_type, _align_size>(std::get<0>(info), std::get<1>(info), int(format));
-			__copy_from_image(std::get<0>(info), std::get<1>(info), std::get<2>(info), std::get<3>(info));
-		}
-		template<typename _type>
-		auto write_image(_type image_path) {
-			auto channel = 1;
-			image image_writer;
-			auto res = return_code::success;
-			if ((66305 != __code_format) && (65792 != __code_format)) {
-				res = return_code::unsupport;
-			}
-			if (return_code::success != res) {
-				return res;
-			}
-			(66305 == __code_format) | [&]() {
-				channel = 3;
-			};
-			return image_writer.write_image(image_path, __width, __height, __parse_format_code<image_info::element_number>(), __pitch[0], __data[0]);
-		}
+	private:
 		auto __copy_to_image(int width, int height, int channel, const _data_type* data) {
 			auto res = return_code::success;
 			return res;
@@ -313,63 +314,11 @@ namespace harpocrates {
 			}
 			return res;
 		}
-	private:
-		// downcase word class is only private use
-		class image {
-		public:
-			image() {
-				data = nullptr;
-			};
-			~image() {
-				__dellocate();
-			};
-		public:
-			auto read_image(std::string image_path) {
-				__dellocate();
-				(std::regex_match(image_path, std::regex(".*\.(bmp|jpg|png)$"))) | [this, &image_path]() {
-					data = stbi_load(image_path.c_str(), &width, &height, &channel, 0);
-				};
-				return std::tuple<int, int, int, unsigned char*>(width, height, channel, data);
-			}
-			auto write_image(std::string image_path, int width, int height, int channel, int pitch, const _data_type* data_with_pitch) {
-				auto res = return_code::success;
-				stbi_image_free(data);
-				!(std::regex_match(image_path, std::regex(".*\.(bmp)$"))) | [&]() {
-					res = return_code::unsupport;
-				};
-				if (return_code::success != res) {
-					return res;
-				}
-				data = __new_data(width * channel * height);
-				(nullptr != data) | [&]() {
-					for (int i = 0; i < height; ++i) {
-						std::copy_n(&data_with_pitch[i * pitch], width * channel, &data[i * width * channel]);
-					}
-					stbi_write_bmp(image_path.c_str(), width, height, channel, data);
-				};
-				__delete_data();
-				return res;
-			}
-		private:
-			auto __new_data(int size) {
-				return new unsigned char[size];
-			}
-			auto __delete_data() {
-				delete[] data;
-				data = nullptr;
-			}
-		private:
-			auto __dellocate() {
-				stbi_image_free(data);
-				data = nullptr;
-			}
-		private:
-			int width;
-			int height;
-			int channel;
-			alignas(_align_size) unsigned char* data;
-		};
 	public:
+		template<typename _ptr_type>
+		decltype(auto) ptr(int i) {
+			return &__data[0][i * __pitch[0]];
+		}
 		MatData crop(int left, int right, int top, int bottom) {
 			return rect(left, right, top, bottom);
 		}
@@ -464,7 +413,7 @@ namespace harpocrates {
 		}
 		// when the data format is nv12 or nv21, be careful
 		_data_type* get_data(int plane_index = 0, int row = 0) {
-			return &__data[plane_index][row * __pitch[plane_index]];
+			return &__data[plane_index][(row) * __pitch[plane_index]];
 		}
 		const _data_type* get_data(int plane_index = 0, int row = 0) const {
 			return &__data[plane_index][row * __pitch[plane_index]];
@@ -545,8 +494,8 @@ namespace harpocrates {
 		alignas(_align_size) _data_type* __data[4];
 		static_assert((_align_size >= 16) && (_align_size % 16 == 0));
 	private:
-		friend iterator<MatData>;
-		friend ReferCount<MatData>;
+		friend iterator<MatData<_data_type, _align_size>>;
+		friend ReferCount<MatData<_data_type, _align_size>>;
 	};
 
 	template<typename _data_type, int _align_size>
@@ -735,4 +684,620 @@ namespace harpocrates {
 
 	using Mat = MatData<unsigned char, 64>;
 
+	// downcase word class only for private use
+	template<int _align_size = 64>
+	class image_io {
+	public:
+		~image_io() = default;
+		image_io() : data(nullptr) {
+		};
+	public:
+		decltype(auto) read_image(std::string image_path) {
+			int format = 65792;
+			data = nullptr;
+			(std::regex_match(image_path, std::regex(".*\.(bmp|jpg|png)$"))) | [this, &image_path]() {
+				data = stbi_load(image_path.c_str(), &width, &height, &channel, 0);
+			};
+			auto image = (nullptr != data) | [&]() {
+				(3 == channel) | [&]() {
+					format = 66305;
+				};
+				auto image = Mat(width, height, format);
+				for (int i = 0; i < height; ++i) {
+					std::copy_n(&data[i * width * channel], width * channel, image.ptr<uchar>(i));
+				}
+				return image;
+			};
+			__dellocate();
+			return image;
+		}
+		[[noreturn]]decltype(auto) write_image(Mat image, std::string image_path) {
+			int a = image.get_elements();
+			int c = a + 1;
+			(std::regex_match(image_path, std::regex(".*\.(bmp)$"))) | [&]() {
+				(nullptr != (data = __new_data(image.get_width() * image.get_height() * image.get_elements()))) | [&]() {
+					for (int i = 0; i < image.get_height(); ++i) {
+						std::copy_n(
+							image.ptr<uchar>(i),
+							image.get_width() * image.get_elements(),
+							&data[i * image.get_width() * image.get_elements()]
+						);
+					}
+					stbi_write_bmp(image_path.c_str(), image.get_width(), image.get_height(), image.get_elements(), data);
+				};
+			};
+			__delete_data();
+		}
+	private:
+		decltype(auto) __new_data(int size) {
+			return new unsigned char[size];
+		}
+		decltype(auto) __delete_data() {
+			delete[] data;
+			data = nullptr;
+		}
+	private:
+		auto __dellocate() {
+			stbi_image_free(data);
+			data = nullptr;
+		}
+	private:
+		int width;
+		int height;
+		int channel;
+		alignas(_align_size) unsigned char* data;
+	};
+
+	namespace image {
+		decltype(auto) color_convert_bgr_2_yuv_row(uchar* in, uchar* out, int width) {
+			for (int i = 0; i < width; ++i) {
+				uchar b = *in++;
+				uchar g = *in++;
+				uchar r = *in++;
+				*out++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+				*out++ = std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+				*out++ = std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+			}
+		}
+		decltype(auto) color_convert_rgb_2_yuv_row(uchar* in, uchar* out, int width) {
+			for (int i = 0; i < width; ++i) {
+				uchar r = *in++;
+				uchar g = *in++;
+				uchar b = *in++;
+				*out++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+				*out++ = std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+				*out++ = std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+			}
+		}
+		decltype(auto) color_convert_yuv_2_bgr_row(uchar* in, uchar* out, int width) {
+			for (int i = 0; i < width; ++i) {
+				uchar y = *in++;
+				uchar u = *in++;
+				uchar v = *in++;
+				*out++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+				*out++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+				*out++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+			}
+		}
+		decltype(auto) color_convert_yuv_2_rgb_row(uchar* in, uchar* out, int width) {
+			for (int i = 0; i < width; ++i) {
+				uchar y = *in++;
+				uchar u = *in++;
+				uchar v = *in++;
+				*out++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+				*out++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+				*out++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+			}
+		}
+	
+		decltype(auto) color_convert_bgr_2_nv12_chunk(int begin, int end, Mat in, Mat out) {
+			int u, v;
+			uchar b, g, r;
+			for (int i = (begin >> 1); i < (end >> 1); ++i) {
+				auto uv_plane = out.get_data(1, i);
+				auto y_pre = out.ptr<uchar>(2 * i + 0);
+				auto y_post = out.ptr<uchar>(2 * i + 1);
+				auto bgr_pre = in.ptr<uchar>(2 * i + 0);
+				auto bgr_post = in.ptr<uchar>(2 * i + 1);
+				for (int j = 0; j < in.get_width() >> 1; ++j) {
+					b = *bgr_pre++;
+					g = *bgr_pre++;
+					r = *bgr_pre++;
+					*y_pre++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u = std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v = std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					b = *bgr_pre++;
+					g = *bgr_pre++;
+					r = *bgr_pre++;
+					*y_pre++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					b = *bgr_post++;
+					g = *bgr_post++;
+					r = *bgr_post++;
+					*y_post++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					b = *bgr_post++;
+					g = *bgr_post++;
+					r = *bgr_post++;
+					*y_post++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					*uv_plane++ = u >> 2;
+					*uv_plane++ = v >> 2;
+				}
+			}
+		}
+		decltype(auto) color_convert_rgb_2_nv12_chunk(int begin, int end, Mat in, Mat out) {
+			int u, v;
+			uchar b, g, r;
+			for (int i = (begin >> 1); i < (end >> 1); ++i) {
+				auto uv_plane = out.get_data(1, i);
+				auto y_pre = out.ptr<uchar>(2 * i + 0);
+				auto y_post = out.ptr<uchar>(2 * i + 1);
+				auto bgr_pre = in.ptr<uchar>(2 * i + 0);
+				auto bgr_post = in.ptr<uchar>(2 * i + 1);
+				for (int j = 0; j < in.get_width() >> 1; ++j) {
+					r = *bgr_pre++;
+					g = *bgr_pre++;
+					b = *bgr_pre++;
+					*y_pre++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u = std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v = std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					r = *bgr_pre++;
+					g = *bgr_pre++;
+					b = *bgr_pre++;
+					*y_pre++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					r = *bgr_post++;
+					g = *bgr_post++;
+					b = *bgr_post++;
+					*y_post++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					r = *bgr_post++;
+					g = *bgr_post++;
+					b = *bgr_post++;
+					*y_post++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					*uv_plane++ = u >> 2;
+					*uv_plane++ = v >> 2;
+				}
+			}
+		}
+		decltype(auto) color_convert_nv12_2_bgr_chunk(int begin, int end, Mat in, Mat out) {
+			uchar y, u, v;
+			for (int i = (begin >> 1); i < (end >> 1); ++i) {
+				auto uv_plane = in.get_data(1, i);
+				auto y_pre = in.ptr<uchar>(2 * i + 0);
+				auto y_post = in.ptr<uchar>(2 * i + 1);
+				auto bgr_pre = out.ptr<uchar>(2 * i + 0);
+				auto bgr_post = out.ptr<uchar>(2 * i + 1);
+				for (int j = 0; j < in.get_width() >> 1; ++j) {
+					y = *y_pre++;
+					u = *uv_plane++;
+					v = *uv_plane++;
+					*bgr_pre++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					y = *y_pre++;
+					*bgr_pre++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					y = *y_post++;
+					*bgr_post++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					y = *y_post++;
+					*bgr_post++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+				}
+			}
+		}
+		decltype(auto) color_convert_nv12_2_rgb_chunk(int begin, int end, Mat in, Mat out) {
+			uchar y, u, v;
+			for (int i = (begin >> 1); i < (end >> 1); ++i) {
+				auto uv_plane = in.get_data(1, i);
+				auto y_pre = in.ptr<uchar>(2 * i + 0);
+				auto y_post = in.ptr<uchar>(2 * i + 1);
+				auto bgr_pre = out.ptr<uchar>(2 * i + 0);
+				auto bgr_post = out.ptr<uchar>(2 * i + 1);
+				for (int j = 0; j < in.get_width() >> 1; ++j) {
+					y = *y_pre++;
+					u = *uv_plane++;
+					v = *uv_plane++;
+					*bgr_pre++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					y = *y_pre++;
+					*bgr_pre++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					y = *y_post++;
+					*bgr_post++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					y = *y_post++;
+					*bgr_post++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+				}
+			}
+		}
+
+		decltype(auto) color_convert_bgr_2_nv21_chunk(int begin, int end, Mat in, Mat out) {
+			int u, v;
+			uchar b, g, r;
+			for (int i = (begin >> 1); i < (end >> 1); ++i) {
+				auto uv_plane = out.get_data(1, i);
+				auto y_pre = out.ptr<uchar>(2 * i + 0);
+				auto y_post = out.ptr<uchar>(2 * i + 1);
+				auto bgr_pre = in.ptr<uchar>(2 * i + 0);
+				auto bgr_post = in.ptr<uchar>(2 * i + 1);
+				for (int j = 0; j < in.get_width() >> 1; ++j) {
+					b = *bgr_pre++;
+					g = *bgr_pre++;
+					r = *bgr_pre++;
+					*y_pre++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u = std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v = std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					b = *bgr_pre++;
+					g = *bgr_pre++;
+					r = *bgr_pre++;
+					*y_pre++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					b = *bgr_post++;
+					g = *bgr_post++;
+					r = *bgr_post++;
+					*y_post++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					b = *bgr_post++;
+					g = *bgr_post++;
+					r = *bgr_post++;
+					*y_post++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					*uv_plane++ = v >> 2;
+					*uv_plane++ = u >> 2;
+				}
+			}
+		}
+		decltype(auto) color_convert_rgb_2_nv21_chunk(int begin, int end, Mat in, Mat out) {
+			int u, v;
+			uchar b, g, r;
+			for (int i = (begin >> 1); i < (end >> 1); ++i) {
+				auto uv_plane = out.get_data(1, i);
+				auto y_pre = out.ptr<uchar>(2 * i + 0);
+				auto y_post = out.ptr<uchar>(2 * i + 1);
+				auto bgr_pre = in.ptr<uchar>(2 * i + 0);
+				auto bgr_post = in.ptr<uchar>(2 * i + 1);
+				for (int j = 0; j < in.get_width() >> 1; ++j) {
+					r = *bgr_pre++;
+					g = *bgr_pre++;
+					b = *bgr_pre++;
+					*y_pre++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u = std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v = std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					r = *bgr_pre++;
+					g = *bgr_pre++;
+					b = *bgr_pre++;
+					*y_pre++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					r = *bgr_post++;
+					g = *bgr_post++;
+					b = *bgr_post++;
+					*y_post++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					r = *bgr_post++;
+					g = *bgr_post++;
+					b = *bgr_post++;
+					*y_post++ = std::clamp(int(0.299 * r + 0.587 * g + 0.114 * b), 0, 255);
+					u += std::clamp(int(-0.169 * r - 0.331 * g + 0.5 * b + 128), 0, 255);
+					v += std::clamp(int(0.5 * r - 0.419 * g - 0.081 * b + 128), 0, 255);
+					*uv_plane++ = v >> 2;
+					*uv_plane++ = u >> 2;
+				}
+			}
+		}
+		decltype(auto) color_convert_nv21_2_bgr_chunk(int begin, int end, Mat in, Mat out) {
+			uchar y, u, v;
+			for (int i = (begin >> 1); i < (end >> 1); ++i) {
+				auto uv_plane = in.get_data(1, i);
+				auto y_pre = in.ptr<uchar>(2 * i + 0);
+				auto y_post = in.ptr<uchar>(2 * i + 1);
+				auto bgr_pre = out.ptr<uchar>(2 * i + 0);
+				auto bgr_post = out.ptr<uchar>(2 * i + 1);
+				for (int j = 0; j < in.get_width() >> 1; ++j) {
+					y = *y_pre++;
+					v = *uv_plane++;
+					u = *uv_plane++;
+					*bgr_pre++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					y = *y_pre++;
+					*bgr_pre++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					y = *y_post++;
+					*bgr_post++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					y = *y_post++;
+					*bgr_post++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+				}
+			}
+		}
+		decltype(auto) color_convert_nv21_2_rgb_chunk(int begin, int end, Mat in, Mat out) {
+			uchar y, u, v;
+			for (int i = (begin >> 1); i < (end >> 1); ++i) {
+				auto uv_plane = in.get_data(1, i);
+				auto y_pre = in.ptr<uchar>(2 * i + 0);
+				auto y_post = in.ptr<uchar>(2 * i + 1);
+				auto bgr_pre = out.ptr<uchar>(2 * i + 0);
+				auto bgr_post = out.ptr<uchar>(2 * i + 1);
+				for (int j = 0; j < in.get_width() >> 1; ++j) {
+					y = *y_pre++;
+					v = *uv_plane++;
+					u = *uv_plane++;
+					*bgr_pre++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					y = *y_pre++;
+					*bgr_pre++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_pre++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					y = *y_post++;
+					*bgr_post++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+					y = *y_post++;
+					*bgr_post++ = std::clamp(int(y + 1.4075 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y - 0.3455 * (u - 128) - 0.7169 * (v - 128)), 0, 255);
+					*bgr_post++ = std::clamp(int(y + 1.779 * (u - 128)), 0, 255);
+				}
+			}
+		}
+
+		decltype(auto) color_convert_impl_bgr_2_rgb(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    for (auto i = begin; i < end; ++i) {
+						auto src = in.ptr<uchar>(i);
+						auto dst = out.ptr<uchar>(i);
+						for (int j = 0; j < in.get_width(); ++j) {
+							dst[0] = src[2];
+							dst[1] = src[1];
+							dst[2] = src[0];
+							dst += 3;
+							src += 3;
+						}
+				    }
+			    }
+			);
+			return return_code::success;
+		}
+		decltype(auto) color_convert_impl_rgb_2_bgr(Mat& in, Mat& out) {
+			return color_convert_impl_bgr_2_rgb(in, out);
+		}	
+		
+		decltype(auto) color_convert_impl_bgr_2_yuv(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    for (auto i = begin; i < end; ++i) {
+						color_convert_bgr_2_yuv_row(in.ptr<uchar>(i), out.ptr<uchar>(i), in.get_width());
+				    }
+			    }
+			);
+			return return_code::success;
+		}
+		decltype(auto) color_convert_impl_rgb_2_yuv(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    for (auto i = begin; i < end; ++i) {
+						color_convert_rgb_2_yuv_row(in.ptr<uchar>(i), out.ptr<uchar>(i), in.get_width());
+				    }
+			    }
+			);
+			return return_code::success;
+		}
+		decltype(auto) color_convert_impl_yuv_2_bgr(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    for (auto i = begin; i < end; ++i) {
+						color_convert_yuv_2_bgr_row(in.ptr<uchar>(i), out.ptr<uchar>(i), in.get_width());
+				    }
+			    }
+			);
+			return return_code::success;
+		}		
+		decltype(auto) color_convert_impl_yuv_2_rgb(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    for (auto i = begin; i < end; ++i) {
+						color_convert_yuv_2_rgb_row(in.ptr<uchar>(i), out.ptr<uchar>(i), in.get_width());
+				    }
+			    }
+			);
+			return return_code::success;
+		}		
+
+		decltype(auto) color_convert_impl_bgr_2_nv12(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_bgr_2_nv12_chunk(begin, end, in, out);
+		    	}
+			);
+			return return_code::success;
+		}
+		decltype(auto) color_convert_impl_rgb_2_nv12(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_rgb_2_nv12_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}
+		decltype(auto) color_convert_impl_nv12_2_bgr(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_nv12_2_bgr_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}		
+		decltype(auto) color_convert_impl_nv12_2_rgb(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_nv12_2_rgb_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}
+		
+		decltype(auto) color_convert_impl_bgr_2_nv21(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+					color_convert_bgr_2_nv21_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}
+		decltype(auto) color_convert_impl_rgb_2_nv21(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_rgb_2_nv21_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}
+		decltype(auto) color_convert_impl_nv21_2_bgr(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_nv21_2_bgr_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}		
+		decltype(auto) color_convert_impl_nv21_2_rgb(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_nv21_2_rgb_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}
+	
+		decltype(auto) color_convert(Mat in, Mat out) {
+			// bgr <==> rgb
+			auto res = return_code::success;
+			if ((in.get_width() != out.get_width()) || (in.get_height() != out.get_height())) {
+				return return_code::unsupport;
+			}
+			((in.get_format_code() == 66304) && (out.get_format_code() == 66305)) | [&]() {
+				return color_convert_impl_bgr_2_rgb(in, out);
+			};
+			// bgr <==> yuv
+			((in.get_format_code() == 66305) && (out.get_format_code() == 66304)) | [&]() {
+				return color_convert_impl_bgr_2_rgb(in, out);
+			};
+			((in.get_format_code() == 66304) && (out.get_format_code() == 66306)) | [&]() {
+				return color_convert_impl_bgr_2_yuv(in, out);
+			};
+			((in.get_format_code() == 66305) && (out.get_format_code() == 66306)) | [&]() {
+				return color_convert_impl_rgb_2_yuv(in, out);
+			};
+			((in.get_format_code() == 66306) && (out.get_format_code() == 66304)) | [&]() {
+				return color_convert_impl_yuv_2_bgr(in, out);
+			};
+			((in.get_format_code() == 66306) && (out.get_format_code() == 66305)) | [&]() {
+				return color_convert_impl_yuv_2_rgb(in, out);
+			};
+			// bgr <==> nv12
+			((in.get_format_code() == 66304) && (out.get_format_code() == 131328)) | [&]() {
+				return color_convert_impl_bgr_2_nv12(in, out);
+			};
+			((in.get_format_code() == 66305) && (out.get_format_code() == 131328)) | [&]() {
+				return color_convert_impl_rgb_2_nv12(in, out);
+			};
+			((in.get_format_code() == 131328) && (out.get_format_code() == 66304)) | [&]() {
+				return color_convert_impl_nv12_2_bgr(in, out);
+			};
+			((in.get_format_code() == 131328) && (out.get_format_code() == 66305)) | [&]() {
+				return color_convert_impl_nv12_2_rgb(in, out);
+			};
+			// bgr <==> nv21
+			((in.get_format_code() == 66304) && (out.get_format_code() == 131329)) | [&]() {
+				return color_convert_impl_bgr_2_nv21(in, out);
+			};
+			((in.get_format_code() == 66305) && (out.get_format_code() == 131329)) | [&]() {
+				return color_convert_impl_rgb_2_nv21(in, out);
+			};
+			((in.get_format_code() == 131329) && (out.get_format_code() == 66304)) | [&]() {
+				return color_convert_impl_nv21_2_bgr(in, out);
+			};
+			((in.get_format_code() == 131329) && (out.get_format_code() == 66305)) | [&]() {
+				return color_convert_impl_nv21_2_rgb(in, out);
+			};
+			return res;
+		}
+
+		template<typename _type, typename _format = image_format>
+		decltype(auto) imread(_type path, _format format) {
+			auto image = image_io().read_image(path);
+			every_not_eque(int(format), 66305, 65792) | [&]() {
+				Mat expect(image.get_width(), image.get_height(), int(format));
+				auto _ = color_convert(image, expect);
+				image = expect;
+			};
+			return image;
+		}
+		template<typename _type>
+		decltype(auto) imwrite(Mat image, _type path) {
+			any_equel(image.get_format_code(), 66305, 65792) | [&]() {
+				return image_io().write_image(image, path);
+			};
+			every_not_eque(image.get_format_code(), 66305, 65792) | [&]() {
+				Mat rgb(image.get_width(), image.get_height(), 66305);
+				auto _ = color_convert(image, rgb);
+				return image_io().write_image(rgb, path);
+			};
+		}
+	}
 }
+

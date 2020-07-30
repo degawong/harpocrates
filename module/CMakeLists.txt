@@ -28,30 +28,36 @@ include(
 )
 
 add_subdirectory(3rdparty)
+add_subdirectory(iterator)
 add_subdirectory(reflection)
 add_subdirectory(time_clock)
 add_subdirectory(image_tool)
 add_subdirectory(path_walker)
 add_subdirectory(thread_pool)
+add_subdirectory(meta_program)
 add_subdirectory(singleton_pattern)
 
 set_property(TARGET image PROPERTY FOLDER "3rdparty")
+set_property(TARGET iterator PROPERTY FOLDER "module")
 set_property(TARGET time_clock PROPERTY FOLDER "module")
 set_property(TARGET image_tool PROPERTY FOLDER "module")
 set_property(TARGET reflection PROPERTY FOLDER "module")
 set_property(TARGET path_walker PROPERTY FOLDER "module")
 set_property(TARGET thread_pool PROPERTY FOLDER "module")
+set_property(TARGET meta_program PROPERTY FOLDER "module")
 set_property(TARGET singleton_pattern PROPERTY FOLDER "module")
 
 add_library(
 	${PROJECT_NAME}
 	${HEADERS}
 	$<TARGET_OBJECTS:image>
+	$<TARGET_OBJECTS:iterator>
 	$<TARGET_OBJECTS:reflection>
 	$<TARGET_OBJECTS:time_clock>
 	$<TARGET_OBJECTS:image_tool>
 	$<TARGET_OBJECTS:path_walker>
 	$<TARGET_OBJECTS:thread_pool>
+	$<TARGET_OBJECTS:meta_program>
 	$<TARGET_OBJECTS:singleton_pattern>
 )
 
