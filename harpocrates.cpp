@@ -13,6 +13,7 @@
 #include <iterator>
 #include <iostream>
 #include <optional>
+#include <xutility>
 #include <execution>
 
 #include <base/base.h>
@@ -30,34 +31,33 @@ using namespace operator_reload;
 
 std::string path{ "non exist directory" };
 
-//#include <vld.h>
-
 int main() {
 
+	//path = "f:/image/yuv";
 	auto path_walker = PathWalker::get_instance();
 	auto image_list = path_walker->walk_path(path, ".*\.(bmp|jpg)");
 
 	for (auto ref : image_list) {
 
-		auto image = imread(ref, image_format::image_format_nv12);
+		auto image = imread(ref, image_format::image_format_yuv);
 
-		std::for_each(
-			//std::execution::par,
-			image.begin(),
-			image.end(),
-			[](auto iter) {
-			    *iter = 0;
-		    }
-		);
+		//std::for_each(
+		//	//std::execution::par,
+		//	image.begin(),
+		//	image.end(),
+		//	[](auto iter) {
+		//	    *iter = 0;
+		//    }
+		//);
 
-		for (auto iter : image) {
-			*iter = 50;
-		}
+		//for (auto iter : image) {
+		//	*iter = 50;
+		//}
 
-		//auto parallel_1 = [](auto iter) {
-		//	**iter = 100;
-		//	//std::cout << std::this_thread::get_id() << std::endl;
-		//};
+		auto parallel_1 = [](auto iter) {
+			**iter = 100;
+			//std::cout << std::this_thread::get_id() << std::endl;
+		};
 
 		//parallel_for_each(image.begin(), image.end(), parallel_1);
 
@@ -71,14 +71,27 @@ int main() {
 			);
 		};
 
-		parallel_execution(image.begin(), image.end(), parallel_2, std::string("harpocrates..."));
+		//parallel_execution(image.begin(), image.end(), parallel_2, std::string("harpocrates..."));
 
-		//imwrite(image, image_path);
+		//for (int i = 0; i < 256; ++i) {
+		//	auto yuv = image.ptr<uchar>(i);
+		//	std::memset(
+		//		yuv,
+		//		i / 20 * 20,
+		//		image.get_pitch(0)
+		//	);
+		//}
+
+		//for (int i = 0; i < 256; ++i) {
+		//	auto yuv = image.ptr<uchar>(i);
+		//	for (int j = 0; j < image.get_width(); ++j) {
+		//		*yuv = 128;
+		//		yuv += 3;
+		//	}			
+		//}
+
+		imwrite(image, "f:/image/yuv.bmp");
 	}
-
-	std::string("operator | reload") | [&](auto iter) {
-		std::cout << iter << std::endl;
-	};
 
 	return 0;
 }

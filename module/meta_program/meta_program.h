@@ -1,3 +1,11 @@
+/*
+ * @autor: degawong
+ * @date: Do not edit
+ * @lastEditors: degawong
+ * @lastEditTime: Do not edit
+ * @description: Do not edi
+ * @filePath: Do not edit
+ */
 
 #pragma once
 
@@ -15,8 +23,10 @@ namespace harpocrates {
 	struct is_iterator <
 		_type,
 		std::void_t<
+		// detect the object has the specific function or not whithout calling the constructor of the class
 		decltype(std::declval<_type&>().end()),
-		decltype(std::declval<_type&>().begin())
+		decltype(std::declval<_type&>().begin()),
+		decltype(std::declval<_type&>().signature())
 		>
 	> : std::true_type {
 	};
@@ -44,5 +54,13 @@ namespace harpocrates {
 	
 	template<typename _diff_type>
 	constexpr _diff_type min_possible_v = -max_possible_v<_diff_type> -1;
+
+	template<typename _function, typename... _args>
+	struct invoke_type {
+		using type = typename std::result_of<_function(_args...)>::type;
+	};
+
+	template<typename _function, typename... _args>
+	using invoke_type_t = typename invoke_type<_function, _args...>::type;
 
 }

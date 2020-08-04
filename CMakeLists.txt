@@ -61,3 +61,9 @@ set_target_properties(
 	VS_DEBUGGER_WORKING_DIRECTORY
 	"${CMAKE_CURRENT_SOURCE_DIR}/workspace/"
 )
+
+set_target_properties(
+	${PROJECT_NAME}
+	PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS
+	"f:/image/relighting_test_image/image_yuv"
+)

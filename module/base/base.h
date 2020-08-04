@@ -63,9 +63,49 @@ namespace harpocrates {
 	};
 
 	template<typename _type_1, typename _type_2>
-	_type_1 clamp(_type_1 min, _type_1 max, _type_2 src) {
-		return min(max(min, src), max);
+	_type_1 clamp( _type_1 value, _type_2 low_limit, _type_2 up_limit) {
+		return min(max(low_limit, value), up_limit);
 	};
+
+	//down align
+	//size - (size % align) = size & ~(align - 1)
+	//up align
+	//(size + (align - 1)) - ((size + (align - 1))% align) = (size + (align - 1))& ~(align - 1)
+	size_t div_up(size_t value, size_t divider) {
+        return (value + divider - 1) / divider;
+    }
+
+	size_t align_up_any(size_t size, size_t align) {
+        return (size + align - 1) / align * align;
+    }
+
+	size_t align_down_any(size_t size, size_t align) {
+        return size / align * align;
+    }
+
+	size_t align_up(size_t size, size_t align) {
+        return (size + align - 1) & ~(align - 1);
+    }
+
+	void * align_up(const void * ptr, size_t align) {
+        return (void *)((((size_t)ptr) + align - 1) & ~(align - 1));
+    }
+
+	size_t align_down(size_t size, size_t align) {
+        return size & ~(align - 1);
+    }
+
+	void * align_down(const void * ptr, size_t align) {
+        return (void *)(((size_t)ptr) & ~(align - 1));
+    }
+
+	bool is_aligned(size_t size, size_t align) {
+        return size == align_down(size, align);
+    }
+
+	bool is_aligned(const void * ptr, size_t align) {
+        return ptr == align_down(ptr, align);
+    }
 
 	auto any_equel = [](auto&& input, auto&&... args) -> bool {
 		return ((args == input) || ...);
@@ -103,9 +143,44 @@ namespace harpocrates {
 
 	namespace type {
 		using uchar = unsigned char;
+		using int8_t = signed char;
+		using int16_t = short;
+		using int32_t = int;
+		using int64_t = long long;
+		using uint8_t = unsigned char;
+		using uint16_t = unsigned short;
+		using uint32_t = unsigned int;
+		using uint64_t = unsigned long long;
+
+		using int_least8_t = signed char;
+		using int_least16_t = short;
+		using int_least32_t = int;
+		using int_least64_t = long long;
+		using uint_least8_t = unsigned char;
+		using uint_least16_t = unsigned short;
+		using uint_least32_t = unsigned int;
+		using uint_least64_t = unsigned long long;
+
+		using int_fast8_t = signed char;
+		using int_fast16_t = int;
+		using int_fast32_t = int;
+		using int_fast64_t = long long;
+		using uint_fast8_t = unsigned char;
+		using uint_fast16_t = unsigned int;
+		using uint_fast32_t = unsigned int;
+		using uint_fast64_t = unsigned long long;
+
+		using intmax_t = long long;
+		using uintmax_t = unsigned long long;
 	}
 
 	namespace image {
+		enum class filte_method {
+			box = 0,
+			median = 1,
+			gaussian = 2,
+		};
+
 		enum class interp_method {
 			linear = 0,
 			bilinear = 1,
