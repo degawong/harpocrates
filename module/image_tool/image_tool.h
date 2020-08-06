@@ -27,11 +27,13 @@
 
 #include <base/base.h>
 
-#include <image/stb_image.h>
-#include <image/stb_image_write.h>
-
+#include <reflection/reflection.h>
 #include <thread_pool/thread_pool.h>
-#include <singleton_pattern/singleton_pattern.h>
+#include <memory_tool/memory_tool.h>
+#include <meta_program/meta_program.h>
+
+#include <3rdparty/image/stb_image.h>
+#include <3rdparty/image/stb_image_write.h>
 
 #ifdef _android_platform_
 #include <arm_neon.h>
@@ -39,12 +41,62 @@
 #include <base/neon_windows.h>
 #endif
 
-
 namespace harpocrates {
 
 	using namespace type;
-	using namespace image;
 	using namespace operator_reload;
+
+	enum class filte_method {
+		box = 0,
+		median = 1,
+		gaussian = 2,
+	};
+
+	enum class interp_method {
+		nearest = 0,
+		bilinear = 1,
+		bicubic = 2,
+	};
+
+	enum class image_info {
+		plane_number = 3,
+		format_number = 1,
+		element_number = 2,
+	};
+
+	template<int _arg_1, int _arg_2, int _arg_3>
+	struct format_code {
+		enum { value = (((_arg_1 << 8) + _arg_2) << 8) + _arg_3 };
+	};
+
+	enum class image_format {
+		image_format_bgr = format_code<1, 3, 0>::value,
+		image_format_rgb = format_code<1, 3, 1>::value,
+		image_format_yuv = format_code<1, 3, 2>::value,
+		image_format_gray = format_code<1, 1, 0>::value,
+		image_format_nv12 = format_code<2, 1, 0>::value,
+		image_format_nv21 = format_code<2, 1, 1>::value,
+	};
+
+	enum class image_convert {
+		bgr_rgb,
+		rgb_bgr,
+		bgr_yuv,
+		rgb_yuv,
+		yuv_bgr,
+		yuv_rgb,
+		bgr_nv12,
+		rgb_nv12,
+		nv12_bgr,
+		nv12_rgb,
+		bgr_nv21,
+		rgb_nv21,
+		nv21_bgr,
+		nv21_rgb,
+		bgr_gray,
+		rgb_gray,
+		unsupport
+	};
 
 	template<typename _type>
 	// downcase word class only for private use
@@ -166,55 +218,6 @@ namespace harpocrates {
 		pointer __data;
 	private:
 		friend _type;
-	};
-
-	template<class _derived>
-	class ReferCount {
-	protected:
-		auto _shallow_clean() {
-			__release();
-		}
-		auto _get_refer() {
-			return __refer_count;
-		}
-		auto _get_refer() const {
-			return __refer_count;
-		}
-		auto _add_ref_count() {
-			(nullptr != __refer_count) | [this]() {
-				(*__refer_count)++;
-			};
-		}
-		auto _dec_ref_count() {
-			(__derived().__shareable) | [this]() {
-				(nullptr != __refer_count) | [this]() {
-					(1 == ((*__refer_count)--)) | [this]() {
-						__uninit();
-					};
-					__release();
-				};
-			};
-		}
-		auto _init(int* ref_count) {
-			__refer_count = ref_count;
-		}
-	private:
-		_derived& __derived() { 
-			return *static_cast<_derived*>(this); 
-		}
-		const _derived& __derived() const {
-			return *static_cast<const _derived*>(this); 
-		}
-		auto __release() {
-			__refer_count = nullptr;
-			__derived().__shallow_clean();
-		}
-		auto __uninit() {
-			delete __refer_count;
-			__derived().__dellocator();
-		}
-	protected:
-		int* __refer_count;
 	};
 
 	template<typename _data_type = unsigned char, int _align_size = 64>
@@ -345,10 +348,10 @@ namespace harpocrates {
 			return region;
 		}
 	public:
-		auto begin() {
+		decltype(auto) begin() {
 			return iterator<MatData>(__code_format, __data[0]);
 		}
-		auto end() {
+		decltype(auto) end() {
 			return iterator<MatData>(__code_format, &__data[0][__height * __pitch[0]]);
 		}
 	public:
@@ -444,7 +447,7 @@ namespace harpocrates {
 			}
 		}
 	private:
-		auto __shallow_clean() {
+		decltype(auto) __shallow_clean() {
 			__width = 0;
 			__height = 0;
 			__code_format = 0;
@@ -454,13 +457,13 @@ namespace harpocrates {
 				__chunck_size[i] = 0;
 			}
 		}
-		auto __allocator() {
+		decltype(auto) __allocator() {
 			__get_format_details();
 			for (size_t i = 0; i < __parse_format_code<image_info::plane_number>(); ++i) {
 				__data[i] = new _data_type[__chunck_size[i]]{ 0 };
 			}
 		}
-		auto __dellocator() {
+		decltype(auto) __dellocator() {
 			for (size_t i = 0; i < 4; ++i) {
 				delete[] __data[i];
 			}
@@ -698,31 +701,6 @@ namespace harpocrates {
 
 	using Mat = MatData<unsigned char, 64>;
 
-	class AutoBuff : public SingletonPattern<AutoBuff> {
-	public:
-		~AutoBuff() {
-			(nullptr != __data) | [this]() {
-				delete[] __data;
-			};
-		}
-	private:
-		AutoBuff(int cols = 1024, int rows = 1024, int channels = 1) : 
-		    __cols(cols), __rows(rows), __channels(channels), __data(nullptr) {
-			__data = new uchar[__cols * __rows * __channels]{ 0 };
-		}
-	public:
-		decltype(auto) get_data() {
-			return __data;
-		}
-	private:
-		int __cols;
-		int __rows;
-		int __channels;
-		alignas(64) uchar * __data;
-	private:
-		friend SingletonPattern<AutoBuff>;
-	};
-
 	template<int _align_size = 64>
 	// downcase word class only for private use
 	class image_io {
@@ -787,11 +765,8 @@ namespace harpocrates {
 		alignas(_align_size) unsigned char* data;
 	};
 
-	namespace neon {
-
-	}
-
 	namespace image {
+		// color convert
 		decltype(auto) color_convert_bgr_2_yuv_chunk(int begin, int end, Mat input, Mat output) {
 			for (int i = begin; i < end; ++i) {
 				auto in = input.ptr<uchar>(i);
@@ -1127,6 +1102,89 @@ namespace harpocrates {
 			}
 		}
 
+		decltype(auto) color_convert_bgr_2_gray_neon_chunk(int begin, int end, Mat input, Mat output) {
+			int gray;
+			int j = 0;
+			int b, g, r;
+			uint8x8x3_t bgr;
+			int16x8_t v_b, v_g, v_r, v_gray;
+
+			int16x8_t v_29, v_149;
+
+			v_29 = vdupq_n_s16(29);
+			v_149 = vdupq_n_s16(149);
+
+			for (int i = begin; i < end; ++i) {
+				auto bgr_plane = input.ptr<uchar>(i);
+				auto gray_plane = output.ptr<uchar>(i);
+				for (j = 0; j < input.get_width() - 8; j += 8) {
+					bgr = vld3_u8(bgr_plane);
+
+					v_b = vreinterpretq_s16_u16(vmovl_u8(bgr.val[0]));
+					v_g = vreinterpretq_s16_u16(vmovl_u8(bgr.val[1]));
+					v_r = vreinterpretq_s16_u16(vmovl_u8(bgr.val[2]));
+
+					v_gray = vmlaq_s16(vmulq_n_s16(v_r, 76), v_g, v_149);
+					v_gray = vshrq_n_s16(vmlaq_s16(v_gray, v_b, v_29), 8);
+
+					vst1_u8(gray_plane, vqmovun_s16(v_gray));
+
+					bgr_plane += 24;
+					gray_plane += 8;
+				}
+				for (; j < input.get_width(); ++j)
+				{
+					b = *bgr_plane++;
+					g = *bgr_plane++;
+					r = *bgr_plane++;
+
+					gray = ((76 * r) + (149 * g) + (29 * b)) >> 8;
+					*(gray_plane++) = std::clamp(gray, 0, 255);
+				}
+			}
+		}
+		decltype(auto) color_convert_rgb_2_gray_neon_chunk(int begin, int end, Mat input, Mat output) {
+			int gray;
+			int j = 0;
+			int b, g, r;
+			uint8x8x3_t bgr;
+			int16x8_t v_b, v_g, v_r, v_gray;
+
+			int16x8_t v_29, v_149;
+
+			v_29 = vdupq_n_s16(29);
+			v_149 = vdupq_n_s16(149);
+
+			for (int i = begin; i < end; ++i) {
+				auto bgr_plane = input.ptr<uchar>(i);
+				auto gray_plane = output.ptr<uchar>(i);
+				for (j = 0; j < input.get_width() - 8; j += 8) {
+					bgr = vld3_u8(bgr_plane);
+
+					v_r = vreinterpretq_s16_u16(vmovl_u8(bgr.val[0]));
+					v_g = vreinterpretq_s16_u16(vmovl_u8(bgr.val[1]));
+					v_b = vreinterpretq_s16_u16(vmovl_u8(bgr.val[2]));
+
+					v_gray = vmlaq_s16(vmulq_n_s16(v_r, 76), v_g, v_149);
+					v_gray = vshrq_n_s16(vmlaq_s16(v_gray, v_b, v_29), 8);
+
+					vst1_u8(gray_plane, vqmovun_s16(v_gray));
+
+					bgr_plane += 24;
+					gray_plane += 8;
+				}
+				for (; j < input.get_width(); ++j)
+				{
+					r = *bgr_plane++;
+					g = *bgr_plane++;
+					b = *bgr_plane++;
+
+					gray = ((76 * r) + (149 * g) + (29 * b)) >> 8;
+					*(gray_plane++) = std::clamp(gray, 0, 255);
+				}
+			}
+		}
+	
 		decltype(auto) color_convert_bgr_2_yuv_neon_chunk(int begin, int end, Mat input, Mat output) {
 			int j = 0;
 			int b, g, r;
@@ -2226,6 +2284,7 @@ namespace harpocrates {
 			}
 		}
 	
+		// bgr <==> rgb
 		decltype(auto) color_convert_impl_bgr_2_rgb(Mat& in, Mat& out) {
 			parallel_execution(
 				0,
@@ -2249,7 +2308,28 @@ namespace harpocrates {
 		decltype(auto) color_convert_impl_rgb_2_bgr(Mat& in, Mat& out) {
 			return color_convert_impl_bgr_2_rgb(in, out);
 		}	
-		
+		// bgr <==> gray
+		decltype(auto) color_convert_impl_bgr_2_gray(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_bgr_2_gray_neon_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}
+		decltype(auto) color_convert_impl_rgb_2_gray(Mat& in, Mat& out) {
+			parallel_execution(
+				0,
+				in.get_height(),
+				[&](auto begin, auto end) {
+				    color_convert_rgb_2_gray_neon_chunk(begin, end, in, out);
+			    }
+			);
+			return return_code::success;
+		}
+		// bgr <==> yuv
 		decltype(auto) color_convert_impl_bgr_2_yuv(Mat& in, Mat& out) {
 			parallel_execution(
 				0,
@@ -2290,7 +2370,7 @@ namespace harpocrates {
 			);
 			return return_code::success;
 		}
-
+		// bgr <==> nv12
 		decltype(auto) color_convert_impl_bgr_2_nv12(Mat& in, Mat& out) {
 			parallel_execution(
 				0,
@@ -2331,7 +2411,7 @@ namespace harpocrates {
 			);
 			return return_code::success;
 		}
-		
+		// bgr <==> nv21
 		decltype(auto) color_convert_impl_bgr_2_nv21(Mat& in, Mat& out) {
 			parallel_execution(
 				0,
@@ -2373,58 +2453,182 @@ namespace harpocrates {
 			return return_code::success;
 		}
 
-		decltype(auto) color_convert(Mat in, Mat out) {
-			auto res = return_code::success;
-			if ((in.get_width() != out.get_width()) || (in.get_height() != out.get_height())) {
-				res = return_code::unsupport;
-			}
-			// bgr <==> rgb
-			((in.get_format_code() == 66304) && (out.get_format_code() == 66305)) | [&]() {
-				return color_convert_impl_bgr_2_rgb(in, out);
+		decltype(auto) color_convert_proxy(int in_format,int out_format) {
+			auto res = image_convert::unsupport;
+			((in_format == 66304) && (out_format == 66305)) | [&]() {
+				res = image_convert::bgr_rgb;
 			};
-			((in.get_format_code() == 66305) && (out.get_format_code() == 66304)) | [&]() {
-				return color_convert_impl_bgr_2_rgb(in, out);
+			((in_format == 66305) && (out_format == 66304)) | [&]() {
+				res = image_convert::bgr_rgb;
 			};
-			// bgr <==> yuv
-			((in.get_format_code() == 66304) && (out.get_format_code() == 66306)) | [&]() {
-				return color_convert_impl_bgr_2_yuv(in, out);
+			((in_format == 66304) && (out_format == 66306)) | [&]() {
+				res = image_convert::bgr_yuv;
 			};
-			((in.get_format_code() == 66305) && (out.get_format_code() == 66306)) | [&]() {
-				return color_convert_impl_rgb_2_yuv(in, out);
+			((in_format == 66305) && (out_format == 66306)) | [&]() {
+				res = image_convert::rgb_yuv;
 			};
-			((in.get_format_code() == 66306) && (out.get_format_code() == 66304)) | [&]() {
-				return color_convert_impl_yuv_2_bgr(in, out);
+			((in_format == 66306) && (out_format == 66304)) | [&]() {
+				res = image_convert::yuv_bgr;
 			};
-			((in.get_format_code() == 66306) && (out.get_format_code() == 66305)) | [&]() {
-				return color_convert_impl_yuv_2_rgb(in, out);
+			((in_format == 66306) && (out_format == 66305)) | [&]() {
+				res = image_convert::yuv_rgb;
 			};
-			// bgr <==> nv12
-			((in.get_format_code() == 66304) && (out.get_format_code() == 131328)) | [&]() {
-				return color_convert_impl_bgr_2_nv12(in, out);
+			((in_format == 66304) && (out_format == 65792)) | [&]() {
+				res = image_convert::bgr_gray;
 			};
-			((in.get_format_code() == 66305) && (out.get_format_code() == 131328)) | [&]() {
-				return color_convert_impl_rgb_2_nv12(in, out);
+			((in_format == 66305) && (out_format == 65792)) | [&]() {
+				res = image_convert::rgb_gray;
 			};
-			((in.get_format_code() == 131328) && (out.get_format_code() == 66304)) | [&]() {
-				return color_convert_impl_nv12_2_bgr(in, out);
+			((in_format == 66304) && (out_format == 131328)) | [&]() {
+				res = image_convert::bgr_nv12;
 			};
-			((in.get_format_code() == 131328) && (out.get_format_code() == 66305)) | [&]() {
-				return color_convert_impl_nv12_2_rgb(in, out);
+			((in_format == 66305) && (out_format == 131328)) | [&]() {
+				res = image_convert::rgb_nv12;
 			};
-			// bgr <==> nv21
-			((in.get_format_code() == 66304) && (out.get_format_code() == 131329)) | [&]() {
-				return color_convert_impl_bgr_2_nv21(in, out);
+			((in_format == 131328) && (out_format == 66304)) | [&]() {
+				res = image_convert::nv12_bgr;
 			};
-			((in.get_format_code() == 66305) && (out.get_format_code() == 131329)) | [&]() {
-				return color_convert_impl_rgb_2_nv21(in, out);
+			((in_format == 131328) && (out_format == 66305)) | [&]() {
+				res = image_convert::nv12_rgb;
 			};
-			((in.get_format_code() == 131329) && (out.get_format_code() == 66304)) | [&]() {
-				return color_convert_impl_nv21_2_bgr(in, out);
+			((in_format == 66304) && (out_format == 131329)) | [&]() {
+				res = image_convert::bgr_nv21;
 			};
-			((in.get_format_code() == 131329) && (out.get_format_code() == 66305)) | [&]() {
-				return color_convert_impl_nv21_2_rgb(in, out);
+			((in_format == 66305) && (out_format == 131329)) | [&]() {
+				res = image_convert::rgb_nv21;
+			};
+			((in_format == 131329) && (out_format == 66304)) | [&]() {
+				res = image_convert::nv21_bgr;
+			};
+			((in_format == 131329) && (out_format == 66305)) | [&]() {
+				res = image_convert::nv21_rgb;
 			};
 			return res;
+		}
+
+		decltype(auto) color_convert(Mat in, Mat out) {
+			auto ir = ImplReflection<image_convert, void, Mat, Mat>::get_instance();
+			ir->regist_factory(image_convert::bgr_rgb, color_convert_impl_bgr_2_rgb);
+			ir->regist_factory(image_convert::rgb_bgr, color_convert_impl_rgb_2_bgr);
+			ir->regist_factory(image_convert::bgr_gray, color_convert_impl_bgr_2_gray);
+			ir->regist_factory(image_convert::rgb_gray, color_convert_impl_rgb_2_gray);
+			ir->regist_factory(image_convert::bgr_yuv, color_convert_impl_bgr_2_yuv);
+			ir->regist_factory(image_convert::rgb_yuv, color_convert_impl_rgb_2_yuv);
+			ir->regist_factory(image_convert::yuv_bgr, color_convert_impl_yuv_2_bgr);
+			ir->regist_factory(image_convert::yuv_rgb, color_convert_impl_yuv_2_rgb);
+			ir->regist_factory(image_convert::bgr_nv12, color_convert_impl_bgr_2_nv12);
+			ir->regist_factory(image_convert::rgb_nv12, color_convert_impl_rgb_2_nv12);
+			ir->regist_factory(image_convert::nv12_bgr, color_convert_impl_nv12_2_bgr);
+			ir->regist_factory(image_convert::nv12_rgb, color_convert_impl_nv12_2_rgb);
+			ir->regist_factory(image_convert::bgr_nv21, color_convert_impl_bgr_2_nv21);
+			ir->regist_factory(image_convert::rgb_nv21, color_convert_impl_rgb_2_nv21);
+			ir->regist_factory(image_convert::nv21_bgr, color_convert_impl_nv21_2_bgr);
+			ir->regist_factory(image_convert::nv21_rgb, color_convert_impl_nv21_2_rgb);
+			auto op = ir->get_algorithm(color_convert_proxy(in.get_format_code(), out.get_format_code()));
+			op(in, out);
+		}
+
+		// image resize(only for unsigned char type)
+		decltype(auto) get_coef_impl_nearest(int src_width, int dst_width, int channels, AutoBuff<int16_t>& auto_buff) {
+			const float scale = src_width / (float)dst_width;
+			float offset = scale / 2 - 0.5;
+			auto position = auto_buff.get_data(0);
+			for (int i = 0; i < dst_width; ++i) {
+				const int interger_position = fast_round(max(0.f, i * scale + offset));
+				const int dst_position = min(interger_position, src_width - 1) * channels;
+				for (int j = 0; j < channels; ++j) {
+					*position++ = dst_position + j;
+				}
+			}
+		}
+		decltype(auto) get_coef_impl_bicubic(int src_width, int dst_width, int channels, AutoBuff<int16_t>& buff) {
+		}
+		decltype(auto) get_coef_impl_bilinear(int src_width, int dst_width, int channels, AutoBuff<int16_t>& buff) {
+			const float scale = src_width / (float)dst_width;
+			float offset = scale / 2 - 0.5;
+			auto position = buff.get_data(0);
+			auto coef_weight = buff.get_data(1);
+			for (int i = 0; i < dst_width; ++i) {
+				const float float_position = std::clamp(i * scale, 0.f, (float)src_width - 1);
+				const int interger_position = min(fast_floor(float_position), src_width - 2);
+				const int channel_position = i * channels;
+				const int interger_weight = (float_position - interger_position) * (1 << shift_number<int>);
+				const int original_position = interger_position * channels;
+				for (int j = 0; j < channels; ++j) {
+					*coef_weight++ = interger_weight;
+					*position++ = original_position + j;
+				}
+			}
+		}
+
+		decltype(auto) get_coef_impl(Mat input, Mat output, AutoBuff<int16_t>& auto_buff, interp_method interpolate_method) {
+			auto ir = ImplReflection<interp_method, void, int, int, int, AutoBuff<int16_t>>::get_instance();
+			ir->regist_factory(interp_method::nearest, get_coef_impl_nearest);
+			ir->regist_factory(interp_method::bicubic, get_coef_impl_bicubic);
+			ir->regist_factory(interp_method::bilinear, get_coef_impl_bilinear);
+			auto op = ir->get_algorithm(interpolate_method);
+			op(input.get_width(), output.get_width(), input.get_elements(), auto_buff);
+		}
+		decltype(auto) resize_impl_nearest(Mat input, Mat output) {
+			float col_scale = input.get_width() / (float)output.get_width();
+			float row_scale = input.get_height() / (float)output.get_height();
+			auto offset = row_scale / 2 - 0.5;
+			AutoBuff<int16_t> auto_buff(output.get_width(), 1, output.get_elements());
+			get_coef_impl(input, output, auto_buff, interp_method::nearest);
+			parallel_execution(0, output.get_height(), [&](auto begin, auto end) {
+				for (int i = begin; i < end; ++i) {
+					auto out = output.ptr<uchar>(i);
+					auto weight = auto_buff.get_data(0);
+					auto in = input.ptr<uchar>(min(i * row_scale + offset, input.get_height() - 1));
+					for (int j = 0; j < output.get_width(); ++j) {
+						for (int k = 0; k < output.get_elements(); ++k) {
+							*out++ = in[*weight++];
+						}
+					}
+				}
+			});
+		}
+		decltype(auto) resize_impl_bicubic(Mat input, Mat output) {
+		}
+		decltype(auto) resize_impl_bilinear(Mat input, Mat output) {
+			float col_scale = input.get_width() / (float)output.get_width();
+			float row_scale = input.get_height() / (float)output.get_height();
+			auto offset = row_scale / 2 - 0.5;
+			AutoBuff<int16_t> auto_buff(output.get_width(), 2, output.get_elements());
+			get_coef_impl(input, output, auto_buff, interp_method::bilinear);
+			parallel_execution(0, output.get_height(), [&](auto begin, auto end) {
+				for (int i = begin; i < end; ++i) {
+					auto out = output.ptr<uchar>(i);
+					auto weight = auto_buff.get_data(1);
+					auto channels = input.get_elements();
+					auto position = auto_buff.get_data(0);
+					const float float_position = std::clamp(i * row_scale, 0.f, (float)input.get_height() - 1);
+					const int interger_position = min(fast_floor(float_position), input.get_height() - 2);
+					auto in_up = input.ptr<uchar>(interger_position);
+					auto in_down = input.ptr<uchar>(interger_position + 1);
+					const int vertical_weight = (float_position - interger_position) * (1 << shift_number<int>);
+					for (int j = 0; j < output.get_width(); ++j) {
+						for (int k = 0; k < output.get_elements(); ++k) {
+							const auto horizontal_weight = *weight++;
+							const auto horizontal_position = *position++;
+							const auto lt = in_up[horizontal_position];
+							const auto lb = in_down[horizontal_position];
+							auto tt = lt + (((in_up[horizontal_position + channels] - lt) * horizontal_weight) >> shift_number<int>);
+							auto tb = lb + (((in_down[horizontal_position + channels] - lb) * horizontal_weight) >> shift_number<int>);
+							*out++ = tt + (((tb - tt) * vertical_weight) >> shift_number<int>);
+						}
+					}
+				}
+			});
+		}
+
+		decltype(auto) resize(Mat input, Mat output, interp_method interpolate_method) {
+			auto ir = ImplReflection<interp_method, void, Mat, Mat>::get_instance();
+			ir->regist_factory(interp_method::nearest, resize_impl_nearest);
+			ir->regist_factory(interp_method::bicubic, resize_impl_bicubic);
+			ir->regist_factory(interp_method::bilinear, resize_impl_bilinear);
+			auto op = ir->get_algorithm(interpolate_method);
+			op(input, output);
 		}
 
 		template<typename _type, typename _format = image_format>
@@ -2432,7 +2636,7 @@ namespace harpocrates {
 			auto image = image_io().read_image(path);
 			every_not_eque(int(format), 66305, 65792) | [&]() {
 				Mat expect(image.get_width(), image.get_height(), int(format));
-				auto _ = color_convert(image, expect);
+				color_convert(image, expect);
 				image = expect;
 			};
 			return image;
@@ -2445,14 +2649,14 @@ namespace harpocrates {
 			};
 			every_not_eque(image.get_format_code(), 66305, 65792) | [&]() {
 				Mat rgb(image.get_width(), image.get_height(), 66305);
-				auto _ = color_convert(image, rgb);
+				color_convert(image, rgb);
 				return image_io().write_image(rgb, path);
 			};
 		}
 
-		template<typename _type, typename _interp = interp_method>
+		template<typename _interp = interp_method>
 		decltype(auto) imresize(Mat input, Mat output, _interp interpolate_method = interp_method::bilinear) {
-
+			return resize(input, output, interpolate_method);
 		}
 	
 		template<typename _type, typename _filter = filte_method>

@@ -22,10 +22,6 @@ file(
 	${CMAKE_CURRENT_SOURCE_DIR}/*
 )
 
-# filter(
-	# SRCS
-# )
-
 add_library(
 	${PROJECT_NAME}
 	OBJECT

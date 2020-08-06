@@ -9,8 +9,6 @@
 
 namespace harpocrates {
 
-	using handle = void *;
-
 	enum class return_code {
 		success,
 		io_error,
@@ -67,45 +65,17 @@ namespace harpocrates {
 		return min(max(low_limit, value), up_limit);
 	};
 
-	//down align
-	//size - (size % align) = size & ~(align - 1)
-	//up align
-	//(size + (align - 1)) - ((size + (align - 1))% align) = (size + (align - 1))& ~(align - 1)
-	size_t div_up(size_t value, size_t divider) {
-        return (value + divider - 1) / divider;
-    }
+	template<typename _type>
+	inline int fast_round(_type x) {
+		static_assert(!std::numeric_limits<_type>::is_integer, "fast_round can only handle float point number");
+		return x > 0 ? static_cast<int>(x + 0.5) : 0;
+	}
 
-	size_t align_up_any(size_t size, size_t align) {
-        return (size + align - 1) / align * align;
-    }
-
-	size_t align_down_any(size_t size, size_t align) {
-        return size / align * align;
-    }
-
-	size_t align_up(size_t size, size_t align) {
-        return (size + align - 1) & ~(align - 1);
-    }
-
-	void * align_up(const void * ptr, size_t align) {
-        return (void *)((((size_t)ptr) + align - 1) & ~(align - 1));
-    }
-
-	size_t align_down(size_t size, size_t align) {
-        return size & ~(align - 1);
-    }
-
-	void * align_down(const void * ptr, size_t align) {
-        return (void *)(((size_t)ptr) & ~(align - 1));
-    }
-
-	bool is_aligned(size_t size, size_t align) {
-        return size == align_down(size, align);
-    }
-
-	bool is_aligned(const void * ptr, size_t align) {
-        return ptr == align_down(ptr, align);
-    }
+	template<typename _type>
+	inline int fast_floor(_type x) {
+		static_assert(!std::numeric_limits<_type>::is_integer, "fast_floor can only handle float point number");
+		return x > 0 ? static_cast<int>(x) : 0;
+	}
 
 	auto any_equel = [](auto&& input, auto&&... args) -> bool {
 		return ((args == input) || ...);
@@ -141,7 +111,31 @@ namespace harpocrates {
 		const Noncopyable& operator=(const Noncopyable&) = delete;
 	};
 
+	template<typename _type>
+	// downcase word class only for private use
+	struct base_type {
+		using value_type = _type;
+		using size_type = size_t;
+		using pointer = value_type *;
+		using difference_type = ptrdiff_t;
+		using const_pointer = const value_type *;
+		using reference = value_type &;
+		using const_reference = const value_type &;
+	};
+
+	template<>
+	// downcase word class only for private use
+	struct base_type<void> {
+		using value_type = void;
+		using size_type = size_t;
+		using pointer = value_type *;
+		using difference_type = ptrdiff_t;
+		using const_pointer = const value_type *;
+	};
+
 	namespace type {
+		using handle = void *;
+
 		using uchar = unsigned char;
 		using int8_t = signed char;
 		using int16_t = short;
@@ -173,40 +167,6 @@ namespace harpocrates {
 		using intmax_t = long long;
 		using uintmax_t = unsigned long long;
 	}
-
-	namespace image {
-		enum class filte_method {
-			box = 0,
-			median = 1,
-			gaussian = 2,
-		};
-
-		enum class interp_method {
-			linear = 0,
-			bilinear = 1,
-			bicubic = 2,
-		};
-
-		enum class image_info {
-			plane_number = 3,
-			format_number = 1,
-			element_number = 2,
-		};
-
-		template<int _arg_1, int _arg_2, int _arg_3>
-		struct format_code {
-			enum { value = (((_arg_1 << 8) + _arg_2) << 8) + _arg_3 };
-		};
-
-		enum class image_format {
-			image_format_bgr = format_code<1, 3, 0>::value,
-			image_format_rgb = format_code<1, 3, 1>::value,
-			image_format_yuv = format_code<1, 3, 2>::value,
-			image_format_gray = format_code<1, 1, 0>::value,
-			image_format_nv12 = format_code<2, 1, 0>::value,
-			image_format_nv21 = format_code<2, 1, 1>::value,
-		};
-	};
 
 	namespace operator_reload {
 		//auto operator<<(std::ostream &, const std::string &) {

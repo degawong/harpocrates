@@ -36,6 +36,7 @@ filter(
 add_executable(
 	${PROJECT_NAME}
 	${SRCS}
+	module/harpocrates.h
 )
 
 target_link_libraries(

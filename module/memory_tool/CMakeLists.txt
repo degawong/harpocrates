@@ -1,5 +1,5 @@
 
-project(image_tool)
+project(memory_tool)
 
 cmake_minimum_required(
 	VERSION
@@ -18,16 +18,12 @@ file(
 
 add_library(
 	${PROJECT_NAME}
-	OBJECT
+	OBJECT	
 	${SRCS}
 )
 
 target_link_libraries(
 	${PROJECT_NAME}
-	image
-	reflection
-	memory_tool
-	meta_program
 	singleton_pattern
 )
 

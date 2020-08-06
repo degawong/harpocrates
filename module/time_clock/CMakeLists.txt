@@ -18,12 +18,12 @@ file(
 
 add_library(
 	${PROJECT_NAME}
+	OBJECT	
 	${SRCS}
 )
 
 target_link_libraries(
 	${PROJECT_NAME}
-	OBJECT
 	singleton_pattern
 )
 

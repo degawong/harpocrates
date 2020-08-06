@@ -6,6 +6,7 @@
  * @description: Do not edi
  * @filePath: Do not edit
  */ 
+#include <map>
 #include <vector>
 #include <string>
 #include <thread>
@@ -15,15 +16,9 @@
 #include <optional>
 #include <xutility>
 #include <execution>
+#include <unordered_map>
 
-#include <base/base.h>
-#include <reflection/reflection.h>
-#include <time_clock/time_clock.h>
-#include <image_tool/image_tool.h>
-#include <path_walker/path_walker.h>
-#include <thread_pool/thread_pool.h>
-#include <meta_program/meta_program.h>
-#include <singleton_pattern/singleton_pattern.h>
+#include <harpocrates.h>
 
 using namespace harpocrates;
 using namespace image;
@@ -31,16 +26,24 @@ using namespace operator_reload;
 
 std::string path{ "non exist directory" };
 
-int main() {
+#include <vld.h>
 
-	//path = "f:/image/yuv";
+int main() {
+	std::vector<int> a;
+	path = "f:/image/yuv";
 	auto path_walker = PathWalker::get_instance();
 	auto image_list = path_walker->walk_path(path, ".*\.(bmp|jpg)");
 
 	for (auto ref : image_list) {
 
-		auto image = imread(ref, image_format::image_format_yuv);
+		auto image = imread(ref, image_format::image_format_rgb);
 
+		Mat g(256, 256, int(image_format::image_format_gray));
+
+		color_convert(image, g);
+
+		Mat o(1256, 1256, int(image_format::image_format_gray));
+		imresize(g, o, interp_method::bilinear);
 		//std::for_each(
 		//	//std::execution::par,
 		//	image.begin(),
@@ -71,7 +74,7 @@ int main() {
 			);
 		};
 
-		//parallel_execution(image.begin(), image.end(), parallel_2, std::string("harpocrates..."));
+		parallel_execution(image.begin(), image.end(), parallel_2, std::string("harpocrates..."));
 
 		//for (int i = 0; i < 256; ++i) {
 		//	auto yuv = image.ptr<uchar>(i);

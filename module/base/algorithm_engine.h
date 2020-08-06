@@ -7,11 +7,12 @@
  */
 #pragma once
 
+#include <base/base.h>
 #include <singleton_pattern/singleton_pattern.h>
 
 namespace harpocrates {
 
-	using handle = void *;
+	using namespace type;
 
 	class EnginePackage final : public SingletonPattern<EnginePackage> {
 	public:
@@ -48,6 +49,26 @@ namespace harpocrates {
 	private:
 		friend SingletonPattern<EnginePackage>;
 	};
+
+	namespace standard {
+		//template <typename _type, typename... _args>
+		//std::unique_ptr<_type> make_unique_proxy(std::false_type, _args&&... args) {
+		//	return std::unique_ptr<_type>(new _type(std::forward<_args>(args)...));
+		//};
+		//template <typename _type, typename... _args>
+		//std::unique_ptr<_type> make_unique_proxy(std::false_type, _args&&... args) {
+		//	static_assert(
+		//		std::extent<_type>::value == 0,
+		//		"make_unique<_type[_size]>() is forbidden, please use make_unique<_type[]>()."
+		//	);
+		//	using _clean_type = typename std::remove_extent<_type>::type;
+		//	return std::unique_ptr<_type>(new _clean_type[sizeof...(_args)]{ std::forward<_args>(args)... });
+		//};
+		//template <typename _type, typename... _args>
+		//std::unique_ptr<_type> make_unique(_args&&... args) {
+		//	return make_unique_proxy<_type>(std::is_array<_type>(), std::forward<_args>(args)...);
+		//};
+	}
 
 	namespace algorithm {
 		class BaseAlgorithm {

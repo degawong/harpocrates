@@ -34,6 +34,7 @@ add_subdirectory(time_clock)
 add_subdirectory(image_tool)
 add_subdirectory(path_walker)
 add_subdirectory(thread_pool)
+add_subdirectory(memory_tool)
 add_subdirectory(meta_program)
 add_subdirectory(singleton_pattern)
 
@@ -44,6 +45,7 @@ set_property(TARGET image_tool PROPERTY FOLDER "module")
 set_property(TARGET reflection PROPERTY FOLDER "module")
 set_property(TARGET path_walker PROPERTY FOLDER "module")
 set_property(TARGET thread_pool PROPERTY FOLDER "module")
+set_property(TARGET memory_tool PROPERTY FOLDER "module")
 set_property(TARGET meta_program PROPERTY FOLDER "module")
 set_property(TARGET singleton_pattern PROPERTY FOLDER "module")
 
@@ -57,6 +59,7 @@ add_library(
 	$<TARGET_OBJECTS:image_tool>
 	$<TARGET_OBJECTS:path_walker>
 	$<TARGET_OBJECTS:thread_pool>
+	$<TARGET_OBJECTS:memory_tool>
 	$<TARGET_OBJECTS:meta_program>
 	$<TARGET_OBJECTS:singleton_pattern>
 )
@@ -65,5 +68,5 @@ target_include_directories(
 	${PROJECT_NAME}
 	PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
-	${CMAKE_CURRENT_SOURCE_DIR}/3rdparty
+	# ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty
 )

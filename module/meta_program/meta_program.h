@@ -49,6 +49,11 @@ namespace harpocrates {
 		57.29577951307855
 	};
 
+	template<typename _type = int>
+	constexpr _type shift_number{
+		11
+	};
+
 	template<typename _diff_type>
 	constexpr _diff_type max_possible_v = static_cast<_diff_type>(static_cast<std::make_unsigned_t<_diff_type>>(-1)>> 1);
 	

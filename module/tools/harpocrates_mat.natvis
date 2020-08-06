@@ -72,4 +72,31 @@
     </Expand>
   </Type>  
   
+  <!-- AutoBuff -->
+  
+  <Type Name="harpocrates::AutoBuff&lt;*&gt;">
+    <UIVisualizer ServiceId="{A452AFEA-3DF6-46BB-9177-C0B08F318025}" Id="1" />
+  </Type>
+  <Type Name="harpocrates::AutoBuff&lt;*&gt;">
+    <Expand>
+		<Synthetic Name="[type]" Condition='strcmp("unsigned char", "$T1") == 0'>
+		  <DisplayString>UINT8</DisplayString>
+		</Synthetic>
+		<Synthetic Name="[type]" Condition='strcmp("short", "$T1") == 0'>
+		  <DisplayString>INT16</DisplayString>
+		</Synthetic>
+		<Synthetic Name="[type]" Condition='strcmp("int", "$T1") == 0'>
+		  <DisplayString>INT32</DisplayString>
+		</Synthetic>		
+		<Synthetic Name="[type]" Condition='strcmp("float", "$T1") == 0'>
+		  <DisplayString>FLOAT32</DisplayString>
+		</Synthetic>
+      <Item Name="[channels]">__channels</Item>
+      <Item Name="[width]">__cols</Item>
+      <Item Name="[height]">__rows</Item>
+      <Item Name="[data]">__data</Item>
+      <Item Name="[stride]">__cols*__channels*sizeof($T1)</Item>
+    </Expand>
+  </Type> 
+  
 </AutoVisualizer>

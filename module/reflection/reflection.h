@@ -19,6 +19,7 @@
 #include <numeric>
 #include <iostream>
 #include <functional>
+#include <unordered_map>
 #include <condition_variable>
 
 #include <base/base.h>
@@ -26,25 +27,62 @@
 #include <singleton_pattern/singleton_pattern.h>
 
 namespace harpocrates {
-	template<typename _algorithm_type = algorithm::BaseAlgorithm, typename _algorithm_code = algorithm_code>
-	class Reflection : public SingletonPattern<Reflection<_algorithm_type, _algorithm_code>> {
+	template<
+		typename _algorithm_type = algorithm::BaseAlgorithm,
+		typename _algorithm_code = algorithm_code
+	>
+	class Reflection : public SingletonPattern<
+		Reflection<
+		_algorithm_type,
+		_algorithm_code
+		>
+	> {
 	private:
 		Reflection() = default;
 	public:
 		~Reflection() = default;
 	public:
-		return_code regist_factory(
+		decltype(auto) regist_factory(
 			_algorithm_code algorithm_code,
 			std::shared_ptr<_algorithm_type> algorithm_type) {
 			__map[algorithm_code] = algorithm_type;
 			return return_code::success;
 		}
-		std::shared_ptr<_algorithm_type> get_algorithm(_algorithm_code algorithm_code) {
-			return __map.find(algorithm_code) == __map.end() ? nullptr : __map.find(algorithm_code);
+		decltype(auto) get_algorithm(_algorithm_code algorithm_code) {
+			return __map[algorithm_code];
 		}
 	private:
 		std::map<_algorithm_code, std::shared_ptr<_algorithm_type>> __map;
 	private:
 		friend SingletonPattern<Reflection>;
+	};
+
+	template<
+		typename _method,
+		typename _return,
+		typename... _args
+	>
+	// avoid unexpected substitution, u can use a signature sometime
+	class ImplReflection : public SingletonPattern<
+		ImplReflection<
+		_method,
+		_return,
+		_args...
+		>
+	> {
+		using invoke_type = std::function<_return(_args...)>;
+	public:
+		decltype(auto) regist_factory(
+			_method method,
+			invoke_type function) {
+			__map[method] = function;
+		}
+		decltype(auto) get_algorithm(_method method) {
+			return __map[method];
+		}
+	private:
+		std::map<_method, invoke_type> __map;
+	private:
+		friend SingletonPattern<ImplReflection>;
 	};
 }
