@@ -2,8 +2,8 @@
  * @Description: 
  * @Autor: degawong
  * @Date: 2019-03-23 19:45:33
- * @LastEditors: degawong
- * @LastEditTime: 2020-05-12 15:04:05
+ * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2020-08-08 01:18:57
  */
 #pragma once
 
@@ -262,6 +262,13 @@ namespace harpocrates {
 				__shareable = auto_buff.__shareable;
 				auto_buff._shallow_clean();
 			}
+		}
+	public:
+		operator pointer () {
+			return __data;
+		}
+		operator const_pointer () const {
+			return __data; 
 		}
 	public:
 		decltype(auto) get_data(int index = 0) {

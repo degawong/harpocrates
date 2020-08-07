@@ -68,4 +68,36 @@ namespace harpocrates {
 	template<typename _function, typename... _args>
 	using invoke_type_t = typename invoke_type<_function, _args...>::type;
 
+	template<char...>
+	struct type_char {
+	};
+
+	template<typename, typename>
+	struct meta_hash {
+	};
+
+	template<>
+	struct meta_hash<type_char<>, type_char<>> {
+		enum { signature = 0 };
+	};
+
+	template<char _>
+	struct meta_hash<type_char<_>, type_char<>> {
+		enum { signature = int64_t(_) };
+	};
+
+	template<char _1, char _2>
+	struct meta_hash<type_char<_1>, type_char<_2>> {
+		enum { signature = int64_t(_1 << 4) + _2 };
+	};
+
+	template<char _1, char _2, char... _>
+	struct meta_hash<type_char<_1, _2, _...>, type_char<>> : meta_hash<type_char<_1, _2>, type_char<_...>> {
+	};
+
+	template<char _1, char _2, char... _>
+	struct meta_hash<type_char<_1, _2>, type_char<_...>> {
+		enum { signature = meta_hash<type_char<_1>, type_char<_2>>::signature + meta_hash<type_char<_...>, type_char<>>::signature };
+	};
+
 }

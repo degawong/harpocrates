@@ -28,11 +28,13 @@
 
 namespace harpocrates {
 	template<
+		decltype(auto) _signature,
 		typename _algorithm_type = algorithm::BaseAlgorithm,
 		typename _algorithm_code = algorithm_code
 	>
 	class Reflection : public SingletonPattern<
 		Reflection<
+		_signature,
 		_algorithm_type,
 		_algorithm_code
 		>
@@ -46,7 +48,6 @@ namespace harpocrates {
 			_algorithm_code algorithm_code,
 			std::shared_ptr<_algorithm_type> algorithm_type) {
 			__map[algorithm_code] = algorithm_type;
-			return return_code::success;
 		}
 		decltype(auto) get_algorithm(_algorithm_code algorithm_code) {
 			return __map[algorithm_code];
@@ -58,13 +59,15 @@ namespace harpocrates {
 	};
 
 	template<
+		decltype(auto) _signature,
 		typename _method,
 		typename _return,
 		typename... _args
 	>
-	// avoid unexpected substitution, u can use a signature sometime
+	// avoid unexpected substitution, u can use a signature sometimes
 	class ImplReflection : public SingletonPattern<
 		ImplReflection<
+		_signature,
 		_method,
 		_return,
 		_args...

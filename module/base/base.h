@@ -66,15 +66,65 @@ namespace harpocrates {
 	};
 
 	template<typename _type>
+	// rounds x upward, returning the smallest integral x that is not less than x.
+	inline int fast_ceil(_type x) {
+		static_assert(!std::numeric_limits<_type>::is_integer, "fast_ceil can only handle float point number");
+		if (x < 0) return 0;
+		const int i = static_cast<int>(x);
+		return i + (i - x < 0);
+	}
+
+	template<typename _type>
 	inline int fast_round(_type x) {
 		static_assert(!std::numeric_limits<_type>::is_integer, "fast_round can only handle float point number");
-		return x > 0 ? static_cast<int>(x + 0.5) : 0;
+		const int i = static_cast<int>(x);
+		return i + (i - x < 0);
 	}
 
 	template<typename _type>
 	inline int fast_floor(_type x) {
 		static_assert(!std::numeric_limits<_type>::is_integer, "fast_floor can only handle float point number");
 		return x > 0 ? static_cast<int>(x) : 0;
+	}
+
+	template<class _type>
+	_type fast_abs(_type x) {
+		return x;
+	}
+
+	template<>
+	inline char fast_abs(char x) {
+		return (x + (x >> 8)) ^ (x >> 8); 
+	}
+
+	template<>
+	inline signed char fast_abs(signed char x) {
+		return (x + (x >> 8)) ^ (x >> 8);
+	}
+
+	template<>
+	inline short fast_abs(short x) {
+		return (x + (x >> 16)) ^ (x >> 16);
+	}
+	//template<> inline int fast_abs(int x) { return (x + (x>>31)) ^ (x>>31); }
+	template<>
+	inline int fast_abs(int x) {
+		return x >= 0 ? x : -x;
+	}
+
+	template<>
+	inline long fast_abs(long x) {
+		return x >= 0 ? x : -x;
+	}
+
+	template<>
+	inline float fast_abs(float x) {
+		return ::fabsf(x);
+	}
+
+	template<>
+	inline double fast_abs(double x) {
+		return ::fabs(x);
 	}
 
 	auto any_equel = [](auto&& input, auto&&... args) -> bool {
@@ -102,13 +152,14 @@ namespace harpocrates {
 		return ((args != input) && ...);
 	};
 
-	class Noncopyable {
+	// downcase word class here for specific useage
+	class uncopyable {
 	protected:
-		Noncopyable() = default;
-		~Noncopyable() = default;
+		uncopyable() = default;
+		~uncopyable() = default;
 	private:
-		Noncopyable(const Noncopyable&) = delete;
-		const Noncopyable& operator=(const Noncopyable&) = delete;
+		uncopyable(const uncopyable&) = delete;
+		const uncopyable& operator=(const uncopyable&) = delete;
 	};
 
 	template<typename _type>
@@ -132,6 +183,8 @@ namespace harpocrates {
 		using difference_type = ptrdiff_t;
 		using const_pointer = const value_type *;
 	};
+
+
 
 	namespace type {
 		using handle = void *;
@@ -166,6 +219,16 @@ namespace harpocrates {
 
 		using intmax_t = long long;
 		using uintmax_t = unsigned long long;
+	}
+
+	namespace engine {
+		struct BaseEngine {
+			virtual void __regist_engine() = 0;
+			virtual void __regist_sse_engine() = 0;
+			virtual void __regist_base_engine() = 0;
+			virtual void __regist_neon_engine() = 0;
+			virtual void __regist_opencl_engine() = 0;
+		};
 	}
 
 	namespace operator_reload {
