@@ -72,32 +72,27 @@ namespace harpocrates {
 	struct type_char {
 	};
 
-	template<typename, typename>
+	template<typename>
 	struct meta_hash {
 	};
 
 	template<>
-	struct meta_hash<type_char<>, type_char<>> {
+	struct meta_hash<type_char<>> {
 		enum { signature = 0 };
 	};
 
 	template<char _>
-	struct meta_hash<type_char<_>, type_char<>> {
+	struct meta_hash<type_char<_>> {
 		enum { signature = int64_t(_) };
 	};
 
 	template<char _1, char _2>
-	struct meta_hash<type_char<_1>, type_char<_2>> {
+	struct meta_hash<type_char<_1, _2>> {
 		enum { signature = int64_t(_1 << 4) + _2 };
 	};
 
 	template<char _1, char _2, char... _>
-	struct meta_hash<type_char<_1, _2, _...>, type_char<>> : meta_hash<type_char<_1, _2>, type_char<_...>> {
+	struct meta_hash<type_char<_1, _2, _...>> {
+		enum { signature = meta_hash<type_char<_1, _2>>::signature + meta_hash<type_char<_...>>::signature };
 	};
-
-	template<char _1, char _2, char... _>
-	struct meta_hash<type_char<_1, _2>, type_char<_...>> {
-		enum { signature = meta_hash<type_char<_1>, type_char<_2>>::signature + meta_hash<type_char<_...>, type_char<>>::signature };
-	};
-
 }

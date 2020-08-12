@@ -69,6 +69,10 @@ namespace harpocrates {
         return ptr == align_down(ptr, align);
     }
 
+	size_t __align_size(size_t size, int n) {
+		return (size + n - 1) & -n;
+	}
+
 	template<typename _type, int _align_size = 64>
 	_type* __align_pointer(_type* ptr, int align_size = _align_size) {
 		return (_type*)(((size_t)ptr + align_size - 1) & -align_size);
@@ -269,6 +273,12 @@ namespace harpocrates {
 		}
 		operator const_pointer () const {
 			return __data; 
+		}
+		reference operator[](int index) {
+			return __data[index];
+		}
+		const_reference operator[](int index) const {
+			return __data[index];
 		}
 	public:
 		decltype(auto) get_data(int index = 0) {

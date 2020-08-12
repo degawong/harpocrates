@@ -44,13 +44,42 @@ namespace harpocrates {
 	using namespace engine;
 	using namespace operator_reload;
 
-	using coef_signature = meta_hash<type_char<'c', 'o', 'e', 'f', 'f', 'i', 'c', 'i', 'e', 'n', 't'>, type_char<>>;
-	using resize_signature = meta_hash<type_char<'i', 'm', 'a', 'g', 'e', 'r', 'e', 's', 'i', 'z', 'e'>, type_char<>>;
+	using coef_signature = meta_hash<type_char<'c', 'o', 'e', 'f', 'f', 'i', 'c', 'i', 'e', 'n', 't'>>;
+	using resize_signature = meta_hash<type_char<'i', 'm', 'a', 'g', 'e', 'r', 'e', 's', 'i', 'z', 'e'>>;
 	
+	enum class interp_method {
+		area = 0,
+		nearest,
+		bilinear,
+		bicubic,
+		lanczos,
+		area_fast,
+	};
+
 	struct DecimateAlpha {
 		int dst_position;
 		int src_position;
 		float alpha_weight;
+	};
+
+	enum class image_convert {
+		bgr_rgb,
+		rgb_bgr,
+		bgr_yuv,
+		rgb_yuv,
+		yuv_bgr,
+		yuv_rgb,
+		bgr_nv12,
+		rgb_nv12,
+		nv12_bgr,
+		nv12_rgb,
+		bgr_nv21,
+		rgb_nv21,
+		nv21_bgr,
+		nv21_rgb,
+		bgr_gray,
+		rgb_gray,
+		unsupport
 	};
 
 	// image resize(only for unsigned char type)
@@ -87,8 +116,8 @@ namespace harpocrates {
 	}
 	
 	class CoefEngine final :
-		public BaseEngine,
 		public uncopyable,
+		public BaseEngine,
 		public SingletonPattern<CoefEngine> {
 		using algorithm_handle = std::function<void(Mat, Mat)>;
 		using native_handle = decltype(ImplReflection<coef_signature::signature, interp_method, void, int, int, int, AutoBuff<int16_t>>::get_instance());
@@ -163,7 +192,6 @@ namespace harpocrates {
 	}
 
 	decltype(auto) resize_impl_area(Mat input, Mat output) {
-		int dy = 0;
 		const auto channels = input.get_elements();
 		float col_scale = input.get_width() / (float)output.get_width();
 		float row_scale = input.get_height() / (float)output.get_height();
@@ -174,12 +202,14 @@ namespace harpocrates {
 		auto adjust_table = adjust_buff.get_data();
 		const int row_table_size = get_resize_area_tab(input.get_height(), 0, output.get_height(), 1, row_scale, row_table);
 		const int col_table_size = get_resize_area_tab(input.get_width(), 0, output.get_width(), input.get_elements(), col_scale, col_table);
-		for (int i = 0; i < row_table_size; ++i) {
+		for (int i = 0, length = 0; i < row_table_size; ++i) {
 			if (i == 0 || (row_table[i].dst_position != row_table[i - 1].dst_position)) {
-				adjust_table[dy++] = i;
+				adjust_table[length++] = i;
 			}
+			(row_table_size == i) | [&]() {
+				adjust_table[length] = row_table_size;
+			};
 		}
-		adjust_table[dy] = row_table_size;
 
 		parallel_execution(
 			0,
@@ -293,8 +323,8 @@ namespace harpocrates {
 	}
 	
 	class ResizeEngine final :
-		public BaseEngine,
 		public uncopyable,
+		public BaseEngine,
 		public SingletonPattern<ResizeEngine> {
 		using algorithm_handle = std::function<void(Mat, Mat)>;
 		using native_handle = decltype(ImplReflection<resize_signature::signature, interp_method, void, Mat, Mat>::get_instance());
@@ -322,15 +352,16 @@ namespace harpocrates {
 	private:
 		virtual void __regist_sse_engine() override {
 		}
-		virtual void __regist_base_engine() override {			
-		}
-		virtual void __regist_neon_engine() override {
+		virtual void __regist_base_engine() override {
 			__handle->regist_factory(interp_method::area, resize_impl_area);
 			__handle->regist_factory(interp_method::nearest, resize_impl_nearest);
 			__handle->regist_factory(interp_method::bicubic, resize_impl_bicubic);
 			__handle->regist_factory(interp_method::lanczos, resize_impl_lanczos);
 			__handle->regist_factory(interp_method::bilinear, resize_impl_bilinear);
 			__handle->regist_factory(interp_method::area_fast, resize_impl_area_fast);
+		}
+		virtual void __regist_neon_engine() override {
+			__regist_base_engine();
 		}
 		virtual void __regist_opencl_engine() override {
 		}
@@ -341,19 +372,20 @@ namespace harpocrates {
 	};
 
 	decltype(auto) resize(Mat in, Mat out, interp_method interpolate_method) {
-		true | [&]() {
-			auto handle = ResizeEngine::get_instance();
-			auto ir = handle->get_engine();
-			auto op = ir->get_algorithm(interpolate_method);
-			op(in, out); 
-		};
-		false | [&]() {
-			copy(in, out);
-		};
+		auto handle = ResizeEngine::get_instance();
+		auto ir = handle->get_engine();
+		auto op = ir->get_algorithm(interpolate_method);
+		op(in, out);
 	}
 
 	template<typename _interp = interp_method>
 	decltype(auto) imresize(Mat input, Mat output, _interp interpolate_method = interp_method::bilinear) {
-		return resize(input, output, interpolate_method);
+		assert(input.get_format() == output.get_format(), "input and output must be the same format");
+		(input.size() == output.size()) | [&]() {
+			copy(input, output);
+		};
+		(input.size() != output.size()) | [&]() {
+			resize(input, output, interpolate_method);
+		};
 	}
 }

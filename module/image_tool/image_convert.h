@@ -45,7 +45,7 @@ namespace harpocrates {
 	using namespace engine;
 	using namespace operator_reload;
 
-	using color_signature = meta_hash<type_char<'c', 'o', 'l', 'r', 'c', 'o', 'n', 'v', 'e', 'r', 't'>, type_char<>>;
+	using color_signature = meta_hash<type_char<'c', 'o', 'l', 'r', 'c', 'o', 'n', 'v', 'e', 'r', 't'>>;
 	// color convert
 	decltype(auto) color_convert_bgr_2_yuv_chunk(int begin, int end, Mat input, Mat output) {
 		for (int i = begin; i < end; ++i) {
@@ -1733,59 +1733,6 @@ namespace harpocrates {
 		return return_code::success;
 	}
 
-	decltype(auto) color_convert_proxy(int in_format, int out_format) {
-		auto res = image_convert::unsupport;
-		((in_format == 66304) && (out_format == 66305)) | [&]() {
-			res = image_convert::bgr_rgb;
-		};
-		((in_format == 66305) && (out_format == 66304)) | [&]() {
-			res = image_convert::bgr_rgb;
-		};
-		((in_format == 66304) && (out_format == 66306)) | [&]() {
-			res = image_convert::bgr_yuv;
-		};
-		((in_format == 66305) && (out_format == 66306)) | [&]() {
-			res = image_convert::rgb_yuv;
-		};
-		((in_format == 66306) && (out_format == 66304)) | [&]() {
-			res = image_convert::yuv_bgr;
-		};
-		((in_format == 66306) && (out_format == 66305)) | [&]() {
-			res = image_convert::yuv_rgb;
-		};
-		((in_format == 66304) && (out_format == 65792)) | [&]() {
-			res = image_convert::bgr_gray;
-		};
-		((in_format == 66305) && (out_format == 65792)) | [&]() {
-			res = image_convert::rgb_gray;
-		};
-		((in_format == 66304) && (out_format == 131328)) | [&]() {
-			res = image_convert::bgr_nv12;
-		};
-		((in_format == 66305) && (out_format == 131328)) | [&]() {
-			res = image_convert::rgb_nv12;
-		};
-		((in_format == 131328) && (out_format == 66304)) | [&]() {
-			res = image_convert::nv12_bgr;
-		};
-		((in_format == 131328) && (out_format == 66305)) | [&]() {
-			res = image_convert::nv12_rgb;
-		};
-		((in_format == 66304) && (out_format == 131329)) | [&]() {
-			res = image_convert::bgr_nv21;
-		};
-		((in_format == 66305) && (out_format == 131329)) | [&]() {
-			res = image_convert::rgb_nv21;
-		};
-		((in_format == 131329) && (out_format == 66304)) | [&]() {
-			res = image_convert::nv21_bgr;
-		};
-		((in_format == 131329) && (out_format == 66305)) | [&]() {
-			res = image_convert::nv21_rgb;
-		};
-		return res;
-	}
-
 	class ColorEngine final : 
 		public BaseEngine, 
 		public uncopyable, 
@@ -1860,15 +1807,77 @@ namespace harpocrates {
 		friend SingletonPattern<ColorEngine>;
 	};
 
-	decltype(auto) color_convert(Mat in, Mat out) {
-		true | [&]() {
+	class ConvertCode {
+	public:
+		ConvertCode(image_convert code) : __code(code) {
+		}
+		ConvertCode(int input_code, int output_code) {
+			((input_code == 66304) && (output_code == 66305)) | [&]() {
+				__code = image_convert::bgr_rgb;
+			};
+			((input_code == 66305) && (output_code == 66304)) | [&]() {
+				__code = image_convert::bgr_rgb;
+			};
+			((input_code == 66304) && (output_code == 66306)) | [&]() {
+				__code = image_convert::bgr_yuv;
+			};
+			((input_code == 66305) && (output_code == 66306)) | [&]() {
+				__code = image_convert::rgb_yuv;
+			};
+			((input_code == 66306) && (output_code == 66304)) | [&]() {
+				__code = image_convert::yuv_bgr;
+			};
+			((input_code == 66306) && (output_code == 66305)) | [&]() {
+				__code = image_convert::yuv_rgb;
+			};
+			((input_code == 66304) && (output_code == 65792)) | [&]() {
+				__code = image_convert::bgr_gray;
+			};
+			((input_code == 66305) && (output_code == 65792)) | [&]() {
+				__code = image_convert::rgb_gray;
+			};
+			((input_code == 66304) && (output_code == 131328)) | [&]() {
+				__code = image_convert::bgr_nv12;
+			};
+			((input_code == 66305) && (output_code == 131328)) | [&]() {
+				__code = image_convert::rgb_nv12;
+			};
+			((input_code == 131328) && (output_code == 66304)) | [&]() {
+				__code = image_convert::nv12_bgr;
+			};
+			((input_code == 131328) && (output_code == 66305)) | [&]() {
+				__code = image_convert::nv12_rgb;
+			};
+			((input_code == 66304) && (output_code == 131329)) | [&]() {
+				__code = image_convert::bgr_nv21;
+			};
+			((input_code == 66305) && (output_code == 131329)) | [&]() {
+				__code = image_convert::rgb_nv21;
+			};
+			((input_code == 131329) && (output_code == 66304)) | [&]() {
+				__code = image_convert::nv21_bgr;
+			};
+			((input_code == 131329) && (output_code == 66305)) | [&]() {
+				__code = image_convert::nv21_rgb;
+			};
+		}
+	public:
+		image_convert operator()() {
+			return __code;
+		}
+	private:
+		image_convert __code;
+	};
+
+	decltype(auto) color_convert(Mat input, Mat output) {
+		(input.get_format() != output.get_format()) | [&]() {
 			auto handle = ColorEngine::get_instance();
 			auto ir = handle->get_engine();
-			auto op = ir->get_algorithm(color_convert_proxy(in.get_format_code(), out.get_format_code()));
-			op(in, out); 
+			auto op = ir->get_algorithm(ConvertCode(input.get_format(), output.get_format())());
+			op(input, output); 
 		};
-		false | [&]() {
-			copy(in, out);
+		(input.get_format() == output.get_format()) | [&]() {
+			copy(input, output);
 		};
 	}
 }

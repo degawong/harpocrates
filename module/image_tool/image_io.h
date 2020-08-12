@@ -48,22 +48,22 @@ namespace harpocrates {
 	class image_io {
 	public:
 		~image_io() = default;
-		image_io() : data(nullptr) {
+		image_io() : __data(nullptr) {
 		};
 	public:
 		decltype(auto) read_image(std::string image_path) {
 			int format = 65792;
-			data = nullptr;
-			(std::regex_match(image_path, std::regex(".*\.(bmp|jpg|png)$"))) | [this, &image_path]() {
-				data = stbi_load(image_path.c_str(), &width, &height, &channel, 0);
+			__data = nullptr;
+			(std::regex_match(image_path, std::regex(".*\.(bmp|jpg|png)$"))) | [&]() {
+				__data = stbi_load(image_path.c_str(), &__width, &__height, &__channel, 0);
 			};
-			auto image = (nullptr != data) | [&]() {
-				(3 == channel) | [&]() {
+			auto image = (nullptr != __data) | [&]() {
+				(3 == __channel) | [&]() {
 					format = 66305;
 				};
-				auto image = Mat(width, height, format);
-				for (int i = 0; i < height; ++i) {
-					std::copy_n(&data[i * width * channel], width * channel, image.ptr<uchar>(i));
+				auto image = Mat(__width, __height, format);
+				for (int i = 0; i < __height; ++i) {
+					std::copy_n(&__data[i * __width * __channel], __width * __channel, image.ptr<uchar>(i));
 				}
 				return image;
 			};
@@ -71,18 +71,16 @@ namespace harpocrates {
 			return image;
 		}
 		[[noreturn]]decltype(auto) write_image(Mat image, std::string image_path) {
-			int a = image.get_elements();
-			int c = a + 1;
 			(std::regex_match(image_path, std::regex(".*\.(bmp)$"))) | [&]() {
-				(nullptr != (data = __new_data(image.get_width() * image.get_height() * image.get_elements()))) | [&]() {
+				(nullptr != (__data = __new_data(image.get_width() * image.get_height() * image.get_elements()))) | [&]() {
 					for (int i = 0; i < image.get_height(); ++i) {
 						std::copy_n(
 							image.ptr<uchar>(i),
 							image.get_width() * image.get_elements(),
-							&data[i * image.get_width() * image.get_elements()]
+							&__data[i * image.get_width() * image.get_elements()]
 						);
 					}
-					stbi_write_bmp(image_path.c_str(), image.get_width(), image.get_height(), image.get_elements(), data);
+					stbi_write_bmp(image_path.c_str(), image.get_width(), image.get_height(), image.get_elements(), __data);
 				};
 			};
 			__delete_data();
@@ -92,19 +90,19 @@ namespace harpocrates {
 			return new unsigned char[size];
 		}
 		decltype(auto) __delete_data() {
-			delete[] data;
-			data = nullptr;
+			delete[] __data;
+			__data = nullptr;
 		}
 	private:
 		auto __dellocate() {
-			stbi_image_free(data);
-			data = nullptr;
+			stbi_image_free(__data);
+			__data = nullptr;
 		}
 	private:
-		int width;
-		int height;
-		int channel;
-		alignas(_align_size) unsigned char* data;
+		int __width;
+		int __height;
+		int __channel;
+		alignas(_align_size) unsigned char* __data;
 	};
 
 	template<typename _type, typename _format = image_format>
@@ -120,10 +118,10 @@ namespace harpocrates {
 
 	template<typename _type>
 	decltype(auto) imwrite(Mat image, _type path) {
-		any_equel(image.get_format_code(), 66305, 65792) | [&]() {
+		any_equel(image.get_format(), 66305, 65792) | [&]() {
 			return image_io().write_image(image, path);
 		};
-		every_not_eque(image.get_format_code(), 66305, 65792) | [&]() {
+		every_not_eque(image.get_format(), 66305, 65792) | [&]() {
 			Mat rgb(image.get_width(), image.get_height(), 66305);
 			color_convert(image, rgb);
 			return image_io().write_image(rgb, path);

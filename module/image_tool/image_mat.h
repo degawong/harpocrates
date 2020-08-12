@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-04-30 10:39:53
- * @LastEditTime: 2020-08-07 08:53:15
+ * @LastEditTime: 2020-08-11 14:28:11
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \harpocrates\module\image_tool\image_tool.h
@@ -46,59 +46,47 @@ namespace harpocrates {
 	using namespace type;
 	using namespace operator_reload;
 
-	enum class filte_method {
-		box = 0,
-		median = 1,
-		gaussian = 2,
-	};
-
-	enum class interp_method {
-		area = 0,
-		nearest,
-		bilinear,
-		bicubic,
-		lanczos,
-		area_fast,
-	};
-
 	enum class image_info {
 		plane_number = 3,
 		format_number = 1,
 		element_number = 2,
 	};
 
-	template<int _arg_1, int _arg_2, int _arg_3>
-	struct format_code {
-		enum { value = (((_arg_1 << 8) + _arg_2) << 8) + _arg_3 };
+	template<int...>
+	struct type_integer {
+	};
+
+	template<typename>
+	struct meta_format {
+	};
+	
+	template<>
+	struct meta_format<type_integer<>> {
+		static constexpr int signature = 0;
+	};
+
+	template<int _1>
+	struct meta_format<type_integer<_1>> {
+		static constexpr int signature = _1;
+	};
+
+	template<int _1, int _2>
+	struct meta_format<type_integer<_1, _2>> {
+		static constexpr int signature = ((_1 << 8) + _2);
+	};
+
+	template<int _1, int _2, int..._>
+	struct meta_format<type_integer<_1, _2, _...>> {
+		static constexpr int signature = meta_format<type_integer<meta_format<type_integer<_1, _2>>::signature, _...>>::signature;
 	};
 
 	enum class image_format {
-		image_format_bgr = format_code<1, 3, 0>::value,
-		image_format_rgb = format_code<1, 3, 1>::value,
-		image_format_yuv = format_code<1, 3, 2>::value,
-		image_format_gray = format_code<1, 1, 0>::value,
-		image_format_nv12 = format_code<2, 1, 0>::value,
-		image_format_nv21 = format_code<2, 1, 1>::value,
-	};
-
-	enum class image_convert {
-		bgr_rgb,
-		rgb_bgr,
-		bgr_yuv,
-		rgb_yuv,
-		yuv_bgr,
-		yuv_rgb,
-		bgr_nv12,
-		rgb_nv12,
-		nv12_bgr,
-		nv12_rgb,
-		bgr_nv21,
-		rgb_nv21,
-		nv21_bgr,
-		nv21_rgb,
-		bgr_gray,
-		rgb_gray,
-		unsupport
+		image_format_bgr = meta_format<type_integer<1, 3, 0>>::signature,
+		image_format_rgb = meta_format<type_integer<1, 3, 1>>::signature,
+		image_format_yuv = meta_format<type_integer<1, 3, 2>>::signature,
+		image_format_gray = meta_format<type_integer<1, 1, 0>>::signature,
+		image_format_nv12 = meta_format<type_integer<2, 1, 0>>::signature,
+		image_format_nv21 = meta_format<type_integer<2, 1, 1>>::signature,
 	};
 
 	template<typename _type>
@@ -317,7 +305,7 @@ namespace harpocrates {
 		}
 		auto __copy_from_image(int width, int height, int channel, const _data_type* data) {
 			auto res = return_code::success;
-			(!((width == __width) && (height == __height) && (channel == __parse_format_code<image_info::element_number>()))) | [&]() {
+			(!((width == __width) && (height == __height) && (channel == __parse_format<image_info::element_number>()))) | [&]() {
 				res = return_code::not_match;
 			};
 			if (return_code::success != res) {
@@ -343,7 +331,7 @@ namespace harpocrates {
 			region.__code_format = __code_format;
 			// to be modification
 			region.__pitch[0] = __pitch[0];
-			region.__data[0] = &(__data[0][top * __pitch[0] + left * __parse_format_code<image_info::element_number>()]);
+			region.__data[0] = &(__data[0][top * __pitch[0] + left * __parse_format<image_info::element_number>()]);
 			if(any_equel(__code_format, 131328, 131329)) {
 				region.__pitch[1] = __pitch[1];
 				region.__data[1] = &(__data[1][(top >> 1) * __pitch[0] + ((left >> 1) << 1)]);
@@ -404,12 +392,12 @@ namespace harpocrates {
 			// if the data type is int, then the initial value
 			// is 0x(value)(value)(value)(value)
 			// data is or not continues in the rows's point of view
-			if (__pitch[0] == __cacu_pitch(__width, 8 * __parse_format_code<image_info::element_number>())) {
+			if (__pitch[0] == __cacu_pitch(__width, 8 * __parse_format<image_info::element_number>())) {
 				std::memset(__data[0], value, __chunck_size[0]);
 			}
 			else {
 				for (int i = 0; i < __height; ++i) {
-					std::memset(&__data[0][i * __pitch[0]], value, __width * __parse_format_code<image_info::element_number>());
+					std::memset(&__data[0][i * __pitch[0]], value, __width * __parse_format<image_info::element_number>());
 				}
 			}
 		}
@@ -420,6 +408,12 @@ namespace harpocrates {
 			return info.str();
 		}
 	public:
+		decltype(auto) area() {
+			return __width * __height;
+		}
+		decltype(auto) size() {
+			return std::pair<int, int>(__width, __height);
+		}
 		const int get_width() const {
 			return __width;
 		}
@@ -430,9 +424,9 @@ namespace harpocrates {
 			return __pitch[query];
 		}
 		const int get_elements() const {
-			return __parse_format_code<image_info::element_number>();
+			return __parse_format<image_info::element_number>();
 		}
-		const int get_format_code() const {
+		const int get_format() const {
 			return __code_format;
 		}
 		// when the data format is nv12 or nv21, be careful
@@ -444,15 +438,15 @@ namespace harpocrates {
 		}
 	private:
 		void __copy_data(const MatData& object) {
-			if (__pitch[0] == __cacu_pitch(__width, 8 * __parse_format_code<image_info::element_number>())) {
+			if (__pitch[0] == __cacu_pitch(__width, 8 * __parse_format<image_info::element_number>())) {
 				// continues
-				for (size_t i = 0; i < __parse_format_code<image_info::plane_number>(); ++i) {
+				for (size_t i = 0; i < __parse_format<image_info::plane_number>(); ++i) {
 					std::copy_n(object.__data[i], __chunck_size[i], __data[i]);
 				}
 			}
 			else {
 				// not continues(rect  region)
-				for (size_t i = 0; i < __parse_format_code<image_info::plane_number>(); ++i) {
+				for (size_t i = 0; i < __parse_format<image_info::plane_number>(); ++i) {
 					for (int i = 0; i < __height; ++i) {
 						std::copy_n(&object.__data[i][i * __pitch[i]], __pitch[i], &__data[i][i * __pitch[i]]);
 					}
@@ -472,7 +466,7 @@ namespace harpocrates {
 		}
 		decltype(auto) __allocator() {
 			__get_format_details();
-			for (size_t i = 0; i < __parse_format_code<image_info::plane_number>(); ++i) {
+			for (size_t i = 0; i < __parse_format<image_info::plane_number>(); ++i) {
 				__data[i] = new _data_type[__chunck_size[i]]{ 0 };
 			}
 		}
@@ -483,7 +477,7 @@ namespace harpocrates {
 		}
 	private:
 		template<image_info _query>
-		int __parse_format_code() const {
+		int __parse_format() const {
 			return (__code_format >> (8 * (int(_query) - 1))) & 0x00ff;
 		}
 		int __cacu_pitch(int width, int bit_count) {
@@ -500,8 +494,8 @@ namespace harpocrates {
 			};
 		}
 		void __get_format_details() {
-			for (size_t i = 0; i < __parse_format_code<image_info::plane_number>(); ++i) {
-				__pitch[i] = __cacu_pitch(__width, 8 * __parse_format_code<image_info::element_number>());
+			for (size_t i = 0; i < __parse_format<image_info::plane_number>(); ++i) {
+				__pitch[i] = __cacu_pitch(__width, 8 * __parse_format<image_info::element_number>());
 			}
 			__cacu_chunck_size();
 			__adjust_chunck_size();
@@ -524,9 +518,6 @@ namespace harpocrates {
 		friend iterator<MatData<_data_type, _align_size>>;
 		friend ReferCount<MatData<_data_type, _align_size>>;
 	};
-
-	template<typename _data_type, int _align_size>
-	class Tensor;
 
 	template<class _derived>
 	class TensorRefer {
@@ -573,23 +564,23 @@ namespace harpocrates {
 		int* __refer_count;
 	};
 
-	template<typename _data_type = unsigned char, int _align_size = 64>
-	class Tensor : public TensorRefer<Tensor<_data_type, _align_size>> {
+	template<int _cols, int _rows, int _channels, typename _data_type = unsigned char, int _align_size = 64>
+	class TensorData : public TensorRefer<TensorData<_cols, _rows, _channels, _data_type, _align_size>> {
 	public:
-		Tensor() {
+		TensorData() {
 			_shallow_clean();
 			_init(new int(1));
 		}
-		Tensor(int cols, int rows, int channels) : __cols(cols), __rows(rows), __channels(channels), __data(nullptr) {
+		TensorData(_data_type b, _data_type g, _data_type r, _data_type alpha = 0) : __cols(_cols), __rows(_rows), __channels(_channels), __data(nullptr) {
 			_init(new int(1));
 			//__allocator();
 			__align_allocator();
 		}
-		~Tensor() {
+		~TensorData() {
 			_dec_ref_count();
 		}
 	public:
-		Tensor(Tensor&& object) {
+		TensorData(TensorData&& object) {
 			_shallow_clean();
 			_init(object._get_refer());
 			__cols = object.__cols;
@@ -598,7 +589,7 @@ namespace harpocrates {
 			__channels = object.__channels;
 			object._shallow_clean();
 		}
-		Tensor(const Tensor& object) {
+		TensorData(const TensorData& object) {
 			_shallow_clean();
 			_init(object._get_refer());
 			_add_ref_count();
@@ -608,7 +599,7 @@ namespace harpocrates {
 			__channels = object.__channels;
 		}
 	public:
-		Tensor& operator= (Tensor&& object) {
+		TensorData& operator= (TensorData&& object) {
 			if (this != &object) {
 				_dec_ref_count();
 				_shallow_clean();
@@ -621,7 +612,7 @@ namespace harpocrates {
 			}
 			return *this;
 		}
-		Tensor& operator= (const Tensor& object) {
+		TensorData& operator= (const TensorData& object) {
 			if (this != &object) {
 				_dec_ref_count();
 				_shallow_clean();
@@ -635,30 +626,36 @@ namespace harpocrates {
 			return *this;
 		}
 	public:
-		int cols() const {
+		decltype(auto) area() const {
+			return __cols * __rows;
+		}
+		decltype(auto) cols() const {
 			return __cols;
 		}
-		int rows() const {
+		decltype(auto) rows() const {
 			return __rows;
 		}
-		int channels() const {
+		decltype(auto) channels() const {
 			return __channels;
 		}
+		decltype(auto) size() {
+			return std::pair<int, int>(__cols, __rows);
+		}
 	public:
-		_data_type* operator[] (int index) {
+		_data_type& operator[] (int index) {
 			return __data[index];
 		}
-		_data_type* operator[] (int index) const {
+		const _data_type& operator[] (int index) const {
 			return __data[index];
 		}
 		_data_type* get_data(int cols, int rows) {
 			return __data + rows * __cols * __channels + cols * __channels;
 		}
-		_data_type* get_data(int cols, int rows) const {
+		const _data_type* get_data(int cols, int rows) const {
 			return __data + rows * __cols * __channels + cols * __channels;
 		}
 		template<typename _out_iterator>
-		friend const _out_iterator& operator<< (_out_iterator& os, const Tensor& tensor) {
+		friend const _out_iterator& operator<< (_out_iterator& os, const TensorData& tensor) {
 			for (int i = 0; i < tensor.rows(); ++i) {
 				for (int j = 0; j < tensor.cols(); ++j) {
 					for (int k = 0; k < tensor.channels(); ++k) {
@@ -709,14 +706,129 @@ namespace harpocrates {
 		int __channels;
 		alignas(_align_size) _data_type* __data;
 	private:
-		friend TensorRefer<Tensor<_data_type, _align_size>>;
+		friend TensorRefer<TensorData<_cols, _rows, _channels, _data_type, _align_size>>;
 	};
 
-	using Mat = MatData<unsigned char, 64>;
+	template<typename _type>
+	struct _bgra {
+		_type b;
+		_type g;
+		_type r;
+		_type a;
+	};
 
+	template<typename _type>
+	struct _xyzw {
+		_type x;
+		_type y;
+		_type z;
+		_type w;
+	};
+
+	template<typename _type>
+	struct _yuva {
+		_type y;
+		_type u;
+		_type v;
+		_type a;
+	};
+
+	template<typename _type>
+	struct _rect {
+		_type left;
+		_type top;
+		_type right;
+		_type bottom;
+	};
+
+	template<typename _type>
+	struct _region {
+		_type x;
+		_type y;
+		_type width;
+		_type height;
+	};
+
+	template<typename _type>
+	struct view {
+		union {
+			_bgra<_type> color;
+			_xyzw<_type> axis;
+			_yuva<_type> yuv;
+			_rect<_type> rect;
+			_region<_type> region;
+		};
+		view(_type _ = 0) {
+			color.b = color.g = color.r = color.a = _;
+		}
+		view(view&& other) {
+			color.b = other.color.b;
+			color.g = other.color.g;
+			color.r = other.color.r;
+			color.a = other.color.a;
+		}
+		view(const view& other) {
+			color.b = other.color.b;
+			color.g = other.color.g;
+			color.r = other.color.r;
+			color.a = other.color.a;
+		}
+		view(_type _1, _type _2, _type _3, _type _4) {
+			color.b = _1;
+			color.g = _2;
+			color.r = _3;
+			color.a = _4;
+		}
+		view& operator= (view&& other) {
+			color.b = other.color.b;
+			color.g = other.color.g;
+			color.r = other.color.r;
+			color.a = other.color.a;
+		}
+		view& operator= (const view& other) {
+			color.b = other.color.b;
+			color.g = other.color.g;
+			color.r = other.color.r;
+			color.a = other.color.a;
+		}
+		_type& operator[] (int index) {
+			b = other.color.b;
+			g = other.color.g;
+			r = other.color.r;
+			a = other.color.a;
+		}
+		const _type& operator[] (int index) const {
+			if (0 == index) {
+				return color.b;
+			}
+			else if (1 == index) {
+				return color.g;
+			}
+			else if (2 == index) {
+				return color.r;
+			}
+			else if (3 == index) {
+				return color.a;
+			}
+		}
+	};
+
+	using Rect = view<int>;
+	using Point = view<int>;
+	using Scalar = view<int>;
+	using Mat = MatData<unsigned char, 64>;
+	//using Point = TensorData<2, 1, 1, int, 64>;
+	template<typename _type>
+	view<_type> operator+ (const view<_type>& region, const std::pair<_type, _type>& pair) {
+		return view<_type>(region.region.x + pair.first, region.region.y + pair.second, region.width, region.height);
+	}
+	template<typename _type>
+	view<_type> operator+ (const view<_type>& region, const view<_type>& point) {
+		return view<_type>(region.region.x + point.point.x, region.region.y + point.point.y, region.width, region.height);
+	}
 	// only for non rect region
 	decltype(auto) copy(Mat input, Mat output) {
-		any_equel(input.get_format_code(), 131328, 131329) | [&]() {
+		any_equel(input.get_format(), 131328, 131329) | [&]() {
 			parallel_execution(
 				0,
 				input.get_height(),
@@ -735,7 +847,7 @@ namespace harpocrates {
     			}
 			);
 		};
-		every_not_eque(input.get_format_code(), 131328, 131329) | [&]() {
+		every_not_eque(input.get_format(), 131328, 131329) | [&]() {
 			parallel_execution(
 				0,
 				input.get_height(),
