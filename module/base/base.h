@@ -190,6 +190,8 @@ namespace harpocrates {
 		using handle = void *;
 
 		using uchar = unsigned char;
+		using ushort = unsigned short;
+
 		using int8_t = signed char;
 		using int16_t = short;
 		using int32_t = int;

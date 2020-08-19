@@ -387,12 +387,12 @@ namespace harpocrates {
 		int j = 0;
 		int b, g, r;
 		uint8x8x3_t bgr;
-		int16x8_t v_b, v_g, v_r, v_gray;
+		uint16x8_t v_b, v_g, v_r, v_gray;
 
-		int16x8_t v_29, v_149;
+		uint16x8_t v_29, v_149;
 
-		v_29 = vdupq_n_s16(29);
-		v_149 = vdupq_n_s16(149);
+		v_29 = vdupq_n_u16(29);
+		v_149 = vdupq_n_u16(149);
 
 		for (int i = begin; i < end; ++i) {
 			auto bgr_plane = input.ptr<uchar>(i);
@@ -400,14 +400,14 @@ namespace harpocrates {
 			for (j = 0; j < input.get_width() - 8; j += 8) {
 				bgr = vld3_u8(bgr_plane);
 
-				v_b = vreinterpretq_s16_u16(vmovl_u8(bgr.val[0]));
-				v_g = vreinterpretq_s16_u16(vmovl_u8(bgr.val[1]));
-				v_r = vreinterpretq_s16_u16(vmovl_u8(bgr.val[2]));
+				v_b = vmovl_u8(bgr.val[0]);
+				v_g = vmovl_u8(bgr.val[1]);
+				v_r = vmovl_u8(bgr.val[2]);
 
-				v_gray = vmlaq_s16(vmulq_n_s16(v_r, 76), v_g, v_149);
-				v_gray = vshrq_n_s16(vmlaq_s16(v_gray, v_b, v_29), 8);
+				v_gray = vmlaq_u16(vmulq_n_u16(v_r, 76), v_g, v_149);
+				v_gray = vshrq_n_u16(vmlaq_u16(v_gray, v_b, v_29), 8);
 
-				vst1_u8(gray_plane, vqmovun_s16(v_gray));
+				vst1_u8(gray_plane, vqmovn_u16(v_gray));
 
 				bgr_plane += 24;
 				gray_plane += 8;
@@ -428,12 +428,12 @@ namespace harpocrates {
 		int j = 0;
 		int b, g, r;
 		uint8x8x3_t bgr;
-		int16x8_t v_b, v_g, v_r, v_gray;
+		uint16x8_t v_b, v_g, v_r, v_gray;
 
-		int16x8_t v_29, v_149;
+		uint16x8_t v_29, v_149;
 
-		v_29 = vdupq_n_s16(29);
-		v_149 = vdupq_n_s16(149);
+		v_29 = vdupq_n_u16(29);
+		v_149 = vdupq_n_u16(149);
 
 		for (int i = begin; i < end; ++i) {
 			auto bgr_plane = input.ptr<uchar>(i);
@@ -441,14 +441,14 @@ namespace harpocrates {
 			for (j = 0; j < input.get_width() - 8; j += 8) {
 				bgr = vld3_u8(bgr_plane);
 
-				v_r = vreinterpretq_s16_u16(vmovl_u8(bgr.val[0]));
-				v_g = vreinterpretq_s16_u16(vmovl_u8(bgr.val[1]));
-				v_b = vreinterpretq_s16_u16(vmovl_u8(bgr.val[2]));
+				v_r = vmovl_u8(bgr.val[0]);
+				v_g = vmovl_u8(bgr.val[1]);
+				v_b = vmovl_u8(bgr.val[2]);
 
-				v_gray = vmlaq_s16(vmulq_n_s16(v_r, 76), v_g, v_149);
-				v_gray = vshrq_n_s16(vmlaq_s16(v_gray, v_b, v_29), 8);
+				v_gray = vmlaq_u16(vmulq_n_u16(v_r, 76), v_g, v_149);
+				v_gray = vshrq_n_u16(vmlaq_u16(v_gray, v_b, v_29), 8);
 
-				vst1_u8(gray_plane, vqmovun_s16(v_gray));
+				vst1_u8(gray_plane, vqmovn_u16(v_gray));
 
 				bgr_plane += 24;
 				gray_plane += 8;

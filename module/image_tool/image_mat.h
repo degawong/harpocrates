@@ -220,6 +220,12 @@ namespace harpocrates {
 		using difference_type = ptrdiff_t;
 		using iterator_category = std::random_access_iterator_tag;
 	public:
+		//MatData(int _) : __shareable(true) {
+		//	_shallow_clean();
+		//	__shareable | [this]() {
+		//		_init(new int(1));
+		//	};
+		//}
 		MatData(bool shareable = true) : __shareable(shareable) {
 			_shallow_clean();
 			__shareable | [this]() {
@@ -298,6 +304,17 @@ namespace harpocrates {
 			}
 			return *this;
 		}
+		// only use for 1 channel and full image(no rect)
+		MatData& operator= (const uchar _) {
+			for (int i = 0; i < __height; ++i) {
+				std::memset(ptr<uchar>(i), _, __pitch[0]);
+			}
+			return *this;
+		}
+	public:
+		bool operator() () {
+			return (nullptr != __data[0]);
+		}
 	private:
 		auto __copy_to_image(int width, int height, int channel, const _data_type* data) {
 			auto res = return_code::success;
@@ -317,7 +334,7 @@ namespace harpocrates {
 			return res;
 		}
 	public:
-		template<typename _ptr_type>
+		template<typename _ptr_type = uchar>
 		decltype(auto) ptr(int i) {
 			return &__data[0][i * __pitch[0]];
 		}
@@ -347,10 +364,10 @@ namespace harpocrates {
 		}
 	public:
 		_data_type* operator[] (int index) {
-			return __data[index];
+			return &__data[0][index];
 		}
 		_data_type* operator[] (int index) const {
-			return __data[index];
+			return &__data[0][index];
 		}
 		template<typename _out_iterator>
 		friend const _out_iterator& operator<< (_out_iterator& os, const MatData& mat) {
@@ -784,18 +801,28 @@ namespace harpocrates {
 			color.g = other.color.g;
 			color.r = other.color.r;
 			color.a = other.color.a;
+			return *this;
 		}
 		view& operator= (const view& other) {
 			color.b = other.color.b;
 			color.g = other.color.g;
 			color.r = other.color.r;
 			color.a = other.color.a;
+			return *this;
 		}
 		_type& operator[] (int index) {
-			b = other.color.b;
-			g = other.color.g;
-			r = other.color.r;
-			a = other.color.a;
+			if (0 == index) {
+				return color.b;
+			}
+			else if (1 == index) {
+				return color.g;
+			}
+			else if (2 == index) {
+				return color.r;
+			}
+			else if (3 == index) {
+				return color.a;
+			}
 		}
 		const _type& operator[] (int index) const {
 			if (0 == index) {
