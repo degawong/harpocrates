@@ -315,6 +315,9 @@ namespace harpocrates {
 		bool operator() () {
 			return (nullptr != __data[0]);
 		}
+		bool operator() () const {
+			return (nullptr != __data[0]);
+		}
 	private:
 		auto __copy_to_image(int width, int height, int channel, const _data_type* data) {
 			auto res = return_code::success;
@@ -338,10 +341,29 @@ namespace harpocrates {
 		decltype(auto) ptr(int i) {
 			return &__data[0][i * __pitch[0]];
 		}
+		template<typename _ptr_type = uchar>
+		decltype(auto) ptr(int i) const {
+			return &__data[0][i * __pitch[0]];
+		}
 		MatData crop(int left, int right, int top, int bottom) {
 			return rect(left, right, top, bottom);
 		}
-		MatData rect(int left, int right, int top, int bottom) {
+		template<typename _type>
+		MatData crop(_type view) {
+			MatData region(false);
+			region.__width = view[2];
+			region.__height = view[3];
+			region.__code_format = __code_format;
+			region.__pitch[0] = __pitch[0];
+			region.__data[0] = &(__data[0][view[1] * __pitch[0] + view[0] * __parse_format<image_info::element_number>()]);
+			if (any_equel(__code_format, 131328, 131329)) {
+				region.__pitch[1] = __pitch[1];
+				region.__data[1] = &(__data[1][(view[1] >> 1) * __pitch[0] + ((view[0] >> 1) << 1)]);
+			}
+			return region;
+		}
+	private:
+		MatData __rect(int left, int right, int top, int bottom) {
 			MatData region(false);
 			region.__width = right - left;
 			region.__height = bottom - top;
@@ -378,7 +400,7 @@ namespace harpocrates {
 					for (int i = begin; i < end; ++i) {
 						auto data = mat.ptr<uchar>(i);
 						for (int j = 0; j < mat.get_width(); ++j) {
-							for (int k = 0; k < mat.get_elements(); ++k) {
+							for (int k = 0; k < mat.get_channels(); ++k) {
 								os << std::right << std::setw(3) << int(*data++) << "  ";
 							}
 						}
@@ -440,7 +462,7 @@ namespace harpocrates {
 		const int get_pitch(int query = 0) const {
 			return __pitch[query];
 		}
-		const int get_elements() const {
+		const int get_channels() const {
 			return __parse_format<image_info::element_number>();
 		}
 		const int get_format() const {
@@ -843,6 +865,7 @@ namespace harpocrates {
 	using Rect = view<int>;
 	using Point = view<int>;
 	using Scalar = view<int>;
+	using Region = view<int>;
 	using Mat = MatData<unsigned char, 64>;
 	//using Point = TensorData<2, 1, 1, int, 64>;
 	template<typename _type>
@@ -852,6 +875,46 @@ namespace harpocrates {
 	template<typename _type>
 	view<_type> operator+ (const view<_type>& region, const view<_type>& point) {
 		return view<_type>(region.region.x + point.point.x, region.region.y + point.point.y, region.width, region.height);
+	}
+	template<typename _type>
+	Mat operator+ (const view<_type>& v, const Mat& input) {
+		Mat output(input.get_width(), input.get_height(), input.get_format());
+		parallel_execution(
+			0,
+			input.get_height(),
+			[&](auto begin, auto end) {
+				for (int i = begin; i < end; ++i) {
+					auto in = input.ptr<uchar>(i);
+					auto out = output.ptr<uchar>(i);
+					for (int j = 0; j < input.get_width(); ++j) {
+						for (int k = 0; k < input.get_channels(); ++k) {
+							*out++ = clamp(v[k] + *in++, 0, 255);
+						}
+					}
+				}
+			};
+		);
+		return output;
+	}
+	template<typename _type>
+	Mat operator- (const view<_type>& v, const Mat& input) {
+		Mat output(input.get_width(), input.get_height(), input.get_format());
+		parallel_execution(
+			0,
+			input.get_height(),
+			[&](auto begin, auto end) {
+				for (int i = begin; i < end; ++i) {
+					auto in = input.ptr<uchar>(i);
+					auto out = output.ptr<uchar>(i);
+					for (int j = 0; j < input.get_width(); ++j) {
+						for (int k = 0; k < input.get_channels(); ++k) {
+							*out++ = clamp(v[k] - *in++, 0, 255);
+						}
+					}
+				}
+			};
+		);
+		return output;
 	}
 	// only for non rect region
 	decltype(auto) copy(Mat input, Mat output) {

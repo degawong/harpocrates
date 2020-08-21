@@ -26,32 +26,32 @@ namespace harpocrates {
 	};
 
 	template <typename _type>
-	_type min(_type&& value) {
+	_type min(_type value) {
 		return value;
 	};
 
 	template <typename _type_1, typename _type_2>
-	_type_1 min(_type_1&& first, _type_2&& second) {
+	_type_1 min(_type_1 first, _type_2 second) {
 		return (_type_1)(first > second ? second : first);
 	};
 
 	template <typename _type, typename... _type_rest>
-	_type min(_type&& head, _type_rest&&... rest) {
+	_type min(_type head, _type_rest... rest) {
 		return min(head, min(rest...));
 	};
 
 	template <typename _type>
-	_type max(_type&& value) {
+	_type max(_type value) {
 		return value;
 	};
 
 	template <typename _type_1, typename _type_2>
-	_type_1 max(_type_1&& first, _type_2&& second) {
+	_type_1 max(_type_1 first, _type_2 second) {
 		return (_type_1)(first < second ? second : first);
 	};
 
 	template <typename _type, typename... _type_rest>
-	_type max(_type&& head, _type_rest&&... rest) {
+	_type max(_type head, _type_rest... rest) {
 		return max(head, max(rest...));
 	};
 

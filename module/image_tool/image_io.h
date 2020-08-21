@@ -72,15 +72,15 @@ namespace harpocrates {
 		}
 		[[noreturn]]decltype(auto) write_image(Mat image, std::string image_path) {
 			(std::regex_match(image_path, std::regex(".*\.(bmp)$"))) | [&]() {
-				(nullptr != (__data = __new_data(image.get_width() * image.get_height() * image.get_elements()))) | [&]() {
+				(nullptr != (__data = __new_data(image.get_width() * image.get_height() * image.get_channels()))) | [&]() {
 					for (int i = 0; i < image.get_height(); ++i) {
 						std::copy_n(
 							image.ptr<uchar>(i),
-							image.get_width() * image.get_elements(),
-							&__data[i * image.get_width() * image.get_elements()]
+							image.get_width() * image.get_channels(),
+							&__data[i * image.get_width() * image.get_channels()]
 						);
 					}
-					stbi_write_bmp(image_path.c_str(), image.get_width(), image.get_height(), image.get_elements(), __data);
+					stbi_write_bmp(image_path.c_str(), image.get_width(), image.get_height(), image.get_channels(), __data);
 				};
 			};
 			__delete_data();
@@ -106,7 +106,7 @@ namespace harpocrates {
 	};
 
 	template<typename _type, typename _format = image_format>
-	decltype(auto) imread(_type path, _format format) {
+	decltype(auto) imread(_type path, _format format = image_format::image_format_rgb) {
 		auto image = image_io().read_image(path);
 		every_not_eque(int(format), 66305) | [&]() {
 			Mat expect(image.get_width(), image.get_height(), int(format));

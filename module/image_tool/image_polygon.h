@@ -163,7 +163,7 @@ namespace harpocrates {
 	decltype(auto) fill_polygon(Mat input, const Point* points, const std::vector<int> points_count, const int polygon_count, const Scalar& color, const int shift, const Point& offset, line_type line = line_type::normal) {
 		float buff[4] = { 0 };
 		std::vector<poly_edge> edges;
-		scalar_2_rawdata((float*)buff, color, input.get_elements(), 0);
+		scalar_2_rawdata((float*)buff, color, input.get_channels(), 0);
 		edges.resize(std::accumulate(points_count.begin(), points_count.end(), 1));
 		for (int i = 0; i < polygon_count; ++i) {
 

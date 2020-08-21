@@ -106,15 +106,15 @@ namespace harpocrates {
 
 	decltype(auto) zero_border(Mat input, int top, int bottom, int left, int right, const Scalar& bgr, border_type border) {
 		const int stride = input.get_pitch(0);
-		const int offset = stride - right * input.get_elements();
+		const int offset = stride - right * input.get_channels();
 		((0 != left) || (0 != right)) | [&]() {
 			for (int i = top; i < input.get_height() - bottom; ++i) {
 				auto in = input.ptr<uchar>(i);
 				(0 != left) | [&]() {
-					std::memset(in, 0, left * input.get_elements());
+					std::memset(in, 0, left * input.get_channels());
 				};
 				(0 != right) | [&]() {
-					std::memset(in + offset, 0, right * input.get_elements());
+					std::memset(in + offset, 0, right * input.get_channels());
 				};
 			}
 		};
@@ -129,34 +129,34 @@ namespace harpocrates {
 		const int roi_width = input.get_width() - left - right;
 		const int roi_height = input.get_height() - top - bottom;
 
-		AutoBuff<uchar> auto_buff((left + right) * input.get_elements(), 1, 1); 
+		AutoBuff<uchar> auto_buff((left + right) * input.get_channels(), 1, 1); 
 
 		auto left_buff = auto_buff.get_data(0);
-		auto right_buff = left_buff + left * input.get_elements();
+		auto right_buff = left_buff + left * input.get_channels();
 
 		for (int i = 0; i < left; ++i) {
-			auto index = (border_interpolate(i - left, roi_width, border) + left) * input.get_elements();
-			for (int j = 0; j < input.get_elements(); ++j) {
+			auto index = (border_interpolate(i - left, roi_width, border) + left) * input.get_channels();
+			for (int j = 0; j < input.get_channels(); ++j) {
 				*left_buff++ = index + j;
 			}
 		}
 
 		for (int i = 0; i < left; ++i) {
-			auto index = (border_interpolate(i + left, roi_width, border) + left) * input.get_elements();
-			for (int j = 0; j < input.get_elements(); ++j) {
+			auto index = (border_interpolate(i + left, roi_width, border) + left) * input.get_channels();
+			for (int j = 0; j < input.get_channels(); ++j) {
 				*right_buff++ = index + j;
 			}
 		}
 		
 		const int stride = input.get_pitch(0);
-		const int offset = stride - right * input.get_elements();
+		const int offset = stride - right * input.get_channels();
 
 		for (int i = top; i < input.get_height() - bottom; ++i) {
 			auto in = input.ptr<uchar>(i);
-			for (int j = 0; j < left * input.get_elements(); ++j) {
+			for (int j = 0; j < left * input.get_channels(); ++j) {
 				in[j] = in[left_buff[j]];
 			}
-			for (int j = 0; j < right * input.get_elements(); ++j) {
+			for (int j = 0; j < right * input.get_channels(); ++j) {
 				in[offset + j] = in[right_buff[j]];
 			}
 		}
@@ -176,21 +176,21 @@ namespace harpocrates {
 		auto buff = auto_buff.get_data();
 		((0 != top) || (0 != bottom)) | [&]() {
 			for (int i = 0; i < input.get_width(); ++i) {
-				for (int j = 0; j < input.get_elements(); ++j) {
+				for (int j = 0; j < input.get_channels(); ++j) {
 					*buff++ = bgr[j];
 				}
 			}
 		};
 		const int stride = input.get_pitch(0);
-		const int offset = stride - right * input.get_elements();
+		const int offset = stride - right * input.get_channels();
 		((0 != left) || (0 != right)) | [&]() {
 			for (int i = top; i < input.get_height() - bottom; ++i) {
 				auto in = input.ptr<uchar>(i);
 				(0 != left) | [&]() {
-					std::memcpy(in, buff, left * input.get_elements());
+					std::memcpy(in, buff, left * input.get_channels());
 				};
 				(0 != right) | [&]() {
-					std::memcpy(in + offset, buff, right * input.get_elements());
+					std::memcpy(in + offset, buff, right * input.get_channels());
 				};
 			}
 		};

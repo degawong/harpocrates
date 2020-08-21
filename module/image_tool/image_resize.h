@@ -156,7 +156,7 @@ namespace harpocrates {
 		auto handle = CoefEngine::get_instance();
 		auto ir = handle->get_engine();
 		auto op = ir->get_algorithm(interpolate_method);
-		op(input.get_width(), output.get_width(), input.get_elements(), auto_buff);
+		op(input.get_width(), output.get_width(), input.get_channels(), auto_buff);
 	}
 	
 	decltype(auto) get_resize_area_tab(int src_width, float offset, int dst_width, int channels, float scale, DecimateAlpha* table) {
@@ -192,7 +192,7 @@ namespace harpocrates {
 	}
 
 	decltype(auto) resize_impl_area(Mat input, Mat output) {
-		const auto channels = input.get_elements();
+		const auto channels = input.get_channels();
 		float col_scale = input.get_width() / (float)output.get_width();
 		float row_scale = input.get_height() / (float)output.get_height();
 		AutoBuff<int32_t> adjust_buff(output.get_height() + 1, 1, 1);
@@ -201,7 +201,7 @@ namespace harpocrates {
 		auto row_table = alpha_buff.get_data(2);
 		auto adjust_table = adjust_buff.get_data();
 		const int row_table_size = get_resize_area_tab(input.get_height(), 0, output.get_height(), 1, row_scale, row_table);
-		const int col_table_size = get_resize_area_tab(input.get_width(), 0, output.get_width(), input.get_elements(), col_scale, col_table);
+		const int col_table_size = get_resize_area_tab(input.get_width(), 0, output.get_width(), input.get_channels(), col_scale, col_table);
 		for (int i = 0, length = 0; i < row_table_size; ++i) {
 			if (i == 0 || (row_table[i].dst_position != row_table[i - 1].dst_position)) {
 				adjust_table[length++] = i;
@@ -233,7 +233,7 @@ namespace harpocrates {
 						const float alpha_weight = col_table[j].alpha_weight;
 						const int col_dst_position = col_table[j].dst_position;
 						const int col_src_position = col_table[j].src_position;
-						for (int k = 0; k < input.get_elements(); ++k) {
+						for (int k = 0; k < input.get_channels(); ++k) {
 							buf[col_dst_position + k] += in[col_src_position + k] * alpha_weight;
 						}
 					}
@@ -248,7 +248,7 @@ namespace harpocrates {
 						auto out = output.ptr<uchar>(pre_dst_position);
 						for (int j = 0; j < output.get_width(); ++j) {
 							for (int k = 0; k < channels; ++k) {
-								*out++ = (uchar)sum_buf[j * input.get_elements() + k];
+								*out++ = (uchar)sum_buf[j * input.get_channels() + k];
 								sum_buf[j * channels + k] = beta_weight * buf[j * channels + k];
 							}
 						}
@@ -267,7 +267,7 @@ namespace harpocrates {
 		float col_scale = input.get_width() / (float)output.get_width();
 		float row_scale = input.get_height() / (float)output.get_height();
 		auto offset = row_scale / 2 - 0.5;
-		AutoBuff<int16_t> auto_buff(output.get_width(), 1, output.get_elements());
+		AutoBuff<int16_t> auto_buff(output.get_width(), 1, output.get_channels());
 		get_coef_impl(input, output, auto_buff, interp_method::nearest);
 		parallel_execution(0, output.get_height(), [&](auto begin, auto end) {
 			for (int i = begin; i < end; ++i) {
@@ -275,7 +275,7 @@ namespace harpocrates {
 				auto weight = auto_buff.get_data(0);
 				auto in = input.ptr<uchar>(min(i * row_scale + offset, input.get_height() - 1));
 				for (int j = 0; j < output.get_width(); ++j) {
-					for (int k = 0; k < output.get_elements(); ++k) {
+					for (int k = 0; k < output.get_channels(); ++k) {
 						*out++ = in[*weight++];
 					}
 				}
@@ -290,13 +290,13 @@ namespace harpocrates {
 		float col_scale = input.get_width() / (float)output.get_width();
 		float row_scale = input.get_height() / (float)output.get_height();
 		auto offset = row_scale / 2 - 0.5;
-		AutoBuff<int16_t> auto_buff(output.get_width(), 2, output.get_elements());
+		AutoBuff<int16_t> auto_buff(output.get_width(), 2, output.get_channels());
 		get_coef_impl(input, output, auto_buff, interp_method::bilinear);
 		parallel_execution(0, output.get_height(), [&](auto begin, auto end) {
 			for (int i = begin; i < end; ++i) {
 				auto out = output.ptr<uchar>(i);
 				auto weight = auto_buff.get_data(1);
-				auto channels = input.get_elements();
+				auto channels = input.get_channels();
 				auto position = auto_buff.get_data(0);
 				const float float_position = std::clamp(i * row_scale, 0.f, (float)input.get_height() - 1);
 				const int interger_position = min(fast_floor(float_position), input.get_height() - 2);
@@ -304,7 +304,7 @@ namespace harpocrates {
 				auto in_down = input.ptr<uchar>(interger_position + 1);
 				const int vertical_weight = (float_position - interger_position) * (1 << shift_number<int>);
 				for (int j = 0; j < output.get_width(); ++j) {
-					for (int k = 0; k < output.get_elements(); ++k) {
+					for (int k = 0; k < output.get_channels(); ++k) {
 						const auto horizontal_weight = *weight++;
 						const auto horizontal_position = *position++;
 						const auto lt = in_up[horizontal_position];
@@ -380,7 +380,7 @@ namespace harpocrates {
 
 	template<typename _interp = interp_method>
 	decltype(auto) imresize(Mat input, Mat output, _interp interpolate_method = interp_method::bilinear) {
-		assert(input.get_format() == output.get_format(), "input and output must be the same format");
+		//assert(input.get_format() == output.get_format(), "input and output must be the same format");
 		(input.size() == output.size()) | [&]() {
 			copy(input, output);
 		};

@@ -750,7 +750,7 @@ namespace harpocrates {
 		uint8x8x3_t bgr_1, bgr_2;
 		int16x8_t y_1, y_2, u_1, v_1;
 		int16x8_t r_1, g_1, b_1, r_2, g_2, b_2;
-		int16x8_t y_tmp, v_38, v_7, v_9, v_91, v128x4u, v128x7v;
+		int16x8_t v_38, v_7, v_9, v_91, v128x4u, v128x7v;
 
 		v_7 = vdupq_n_s16(7);
 		v_9 = vdupq_n_s16(9);
@@ -829,7 +829,7 @@ namespace harpocrates {
 		uint8x8x3_t bgr_1, bgr_2;
 		int16x8_t y_1, y_2, u_1, v_1;
 		int16x8_t r_1, g_1, b_1, r_2, g_2, b_2;
-		int16x8_t y_tmp, v_38, v_7, v_9, v_91, v128x4u, v128x7v;
+		int16x8_t v_38, v_7, v_9, v_91, v128x4u, v128x7v;
 
 		v_7 = vdupq_n_s16(7);
 		v_9 = vdupq_n_s16(9);
@@ -1161,7 +1161,7 @@ namespace harpocrates {
 		uint8x8x3_t bgr_1, bgr_2;
 		int16x8_t y_1, y_2, u_1, v_1;
 		int16x8_t r_1, g_1, b_1, r_2, g_2, b_2;
-		int16x8_t y_tmp, v_38, v_7, v_9, v_91, v128x4u, v128x7v;
+		int16x8_t v_38, v_7, v_9, v_91, v128x4u, v128x7v;
 
 		v_7 = vdupq_n_s16(7);
 		v_9 = vdupq_n_s16(9);
@@ -1240,7 +1240,7 @@ namespace harpocrates {
 		uint8x8x3_t bgr_1, bgr_2;
 		int16x8_t y_1, y_2, u_1, v_1;
 		int16x8_t r_1, g_1, b_1, r_2, g_2, b_2;
-		int16x8_t y_tmp, v_38, v_7, v_9, v_91, v128x4u, v128x7v;
+		int16x8_t v_38, v_7, v_9, v_91, v128x4u, v128x7v;
 
 		v_7 = vdupq_n_s16(7);
 		v_9 = vdupq_n_s16(9);

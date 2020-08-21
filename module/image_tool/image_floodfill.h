@@ -62,9 +62,9 @@ namespace harpocrates {
 			region = true;
 			fill_image = true;
 			fixed_range = true;
-			up_bound = { 150 };
-			low_bound = { 150 };
-			connectivity = fill_method::_4;
+			up_bound = { 30 };
+			low_bound = { 30 };
+			connectivity = fill_method::_8;
 		}
 		Rect rect;
 		Point seed;
@@ -127,7 +127,7 @@ namespace harpocrates {
 	decltype(auto) flood_fill_impl_grad(Mat image, Mat mask, flood_parameter& parameter) {
 		bool region = parameter.region;
 		std::vector<fill_segment> buffer;
-		auto channels = image.get_elements();
+		auto channels = image.get_channels();
 		bool fill_image = parameter.fill_image;
 		uchar fill_value = parameter.fill_value;
 		buffer.resize(max(image.get_width(), image.get_height()) * 2);
