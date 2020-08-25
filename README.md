@@ -1,9 +1,9 @@
 
-### install view tool
+### config view tool
 * copy `module/tools/harpocrates_mat.natvis` to 
-`visual studio install path\Common7\Packages\Debugger\Visualizers`(image-watch is needed)
+`visual studio install path\Common7\Packages\Debugger\Visualizers`(`image-watch` is needed)
 ### build project
-* (only vidual studio 2017 && later)
+* (only for visual studio 2017 && later)
 ```cmake
 mkdir build
 cd build
