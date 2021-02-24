@@ -63,6 +63,7 @@ namespace harpocrates {
 		gauss,
 		median,
 		bilateral,
+		box_gauss,
 		adaptive_bilateral,
 	};
 

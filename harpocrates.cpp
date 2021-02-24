@@ -18,83 +18,76 @@
 #include <execution>
 #include <unordered_map>
 
-#include <harpocrates.h>
+#include <iostream>
+#include <type_traits>
+#include <utility>
 
-using namespace harpocrates;
-using namespace image;
-using namespace operator_reload;
+template <typename T>
+struct BoxedType {};
 
-std::string path{ "non exist directory" };
+// an instance of BoxedType<T>
+template<typename T>
+constexpr auto BoxedInstance = BoxedType<T>{};
 
-#include <vld.h>
+// function without function body
+template<typename T>
+constexpr T StripBoxedType(BoxedType<T>);
 
-int main() {
-	std::vector<int> a;
-	path = "f:/image/yuv";
-	auto path_walker = PathWalker::get_instance();
-	auto image_list = path_walker->walk_path(path, ".*\.(bmp|jpg)");
+// SFINAE out using this function without function body
+template<typename LambdaType, typename... ArgTypes,
+	typename = decltype(std::declval<LambdaType>()(std::declval<ArgTypes&&>()...))>
+	std::true_type is_implemented(void*);
 
-	for (auto ref : image_list) {
+// catch all function without function body
+template<typename LambdaType, typename... ArgTypes>
+std::false_type is_implemented(...);
 
-		auto image = imread(ref, image_format::image_format_rgb);
+constexpr auto is_implementation_valid = [](auto lambda_instance)
+{
+	return [](auto&&... lambda_args)
+	{
+		return decltype(is_implemented<decltype(lambda_instance), decltype(lambda_args)&&...>(nullptr)){};
+	};
+};
 
-		Mat g(256, 256, int(image_format::image_format_gray));
+constexpr auto is_default_constructible_lambda = [](auto boxed_instance)
+-> decltype( decltype(StripBoxedType(boxed_instance))()) {};
 
-		color_convert(image, g);
+constexpr auto is_default_constructible_helper = 
+	is_implementation_valid(is_default_constructible_lambda);
 
-		Mat o(1256, 1256, int(image_format::image_format_gray));
-		imresize(g, o, interp_method::bilinear);
-		//std::for_each(
-		//	//std::execution::par,
-		//	image.begin(),
-		//	image.end(),
-		//	[](auto iter) {
-		//	    *iter = 0;
-		//    }
-		//);
+template<typename T>
+constexpr bool is_default_constructible = is_default_constructible_helper(BoxedInstance<T>);
 
-		//for (auto iter : image) {
-		//	*iter = 50;
-		//}
+class Constructible
+{
+public:
+	Constructible() = default;
+};
 
-		auto parallel_1 = [](auto iter) {
-			**iter = 100;
-			//std::cout << std::this_thread::get_id() << std::endl;
-		};
+class NotConstructible
+{
+private:
+	NotConstructible() = default;
+	
+public:
+	//NotConstructible() = delete;
 
-		//parallel_for_each(image.begin(), image.end(), parallel_1);
+};
 
-		auto parallel_2 = [&](auto begin, auto end, auto info) {
-			std::for_each(
-				begin,
-				end,
-				[](auto iter) {
-				    *iter = 150;
-			    }
-			);
-		};
+int main()
+{
+	std::cout << "Is [int] default constructible ? "
+		<<std::boolalpha << is_default_constructible_helper(BoxedInstance<int>) << std::endl;
 
-		parallel_execution(image.begin(), image.end(), parallel_2, std::string("harpocrates..."));
+	std::cout << "Is [int&] default constructible ? "
+		<< std::boolalpha << is_default_constructible_helper(BoxedInstance<int&>) << std::endl;
 
-		//for (int i = 0; i < 256; ++i) {
-		//	auto yuv = image.ptr<uchar>(i);
-		//	std::memset(
-		//		yuv,
-		//		i / 20 * 20,
-		//		image.get_pitch(0)
-		//	);
-		//}
+	std::cout << "Is [Constructible] default constructible ? "
+		<< std::boolalpha << is_default_constructible_helper(BoxedInstance<Constructible>) << std::endl;
 
-		//for (int i = 0; i < 256; ++i) {
-		//	auto yuv = image.ptr<uchar>(i);
-		//	for (int j = 0; j < image.get_width(); ++j) {
-		//		*yuv = 128;
-		//		yuv += 3;
-		//	}			
-		//}
+	std::cout << "Is [NotConstructible] default constructible ? "
+		<< std::boolalpha << is_default_constructible_helper(BoxedInstance<NotConstructible>) << std::endl;
 
-		imwrite(image, "f:/image/yuv.bmp");
-	}
-
-	return 0;
 }
+

@@ -237,6 +237,9 @@ namespace harpocrates {
 			_init(new int(1));
 			__allocator();
 		}
+		MatData(std::pair<int, int> size, int code_format) : 
+			MatData(size.first, size.second, code_format) {
+		}
 		virtual ~MatData() {
 			_dec_ref_count();
 		}
@@ -417,7 +420,12 @@ namespace harpocrates {
 		_data_type* data(int index = 0) const {
 			return __data[index];
 		}
-		MatData& copy() {
+		MatData copy() {
+			auto ret = MatData(__width, __height, __code_format);
+			ret.__copy_data(*this);
+			return ret;
+		}
+		MatData clone() {
 			auto ret = MatData(__width, __height, __code_format);
 			ret.__copy_data(*this);
 			return ret;
@@ -477,7 +485,7 @@ namespace harpocrates {
 		}
 	private:
 		void __copy_data(const MatData& object) {
-			if (__pitch[0] == __cacu_pitch(__width, 8 * __parse_format<image_info::element_number>())) {
+			if (object.__pitch[0] == __cacu_pitch(__width, 8 * __parse_format<image_info::element_number>())) {
 				// continues
 				for (size_t i = 0; i < __parse_format<image_info::plane_number>(); ++i) {
 					std::copy_n(object.__data[i], __chunck_size[i], __data[i]);
@@ -486,8 +494,8 @@ namespace harpocrates {
 			else {
 				// not continues(rect  region)
 				for (size_t i = 0; i < __parse_format<image_info::plane_number>(); ++i) {
-					for (int i = 0; i < __height; ++i) {
-						std::copy_n(&object.__data[i][i * __pitch[i]], __pitch[i], &__data[i][i * __pitch[i]]);
+					for (int j = 0; j < __height; ++j) {
+						std::copy_n(&object.__data[i][j * object.__pitch[i]], __pitch[i], &__data[i][j * __pitch[i]]);
 					}
 				}
 			}
@@ -892,7 +900,7 @@ namespace harpocrates {
 						}
 					}
 				}
-			};
+			}
 		);
 		return output;
 	}
@@ -912,7 +920,7 @@ namespace harpocrates {
 						}
 					}
 				}
-			};
+			}
 		);
 		return output;
 	}
